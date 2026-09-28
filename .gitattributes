@@ -1,0 +1,6 @@
+# Jaga agar akhiran baris tetap LF di semua sistem.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.xlsx binary

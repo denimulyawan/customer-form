@@ -1,0 +1,24 @@
+{
+  "name": "customer-form",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplikasi internal pencatatan akun pelanggan (SolarWinds & Duo) dengan Google Sheets sebagai database",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "jose": "^5.9.6",
+    "next": "^15.5.26",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "typescript": "^5.9.0"
+  }
+}
