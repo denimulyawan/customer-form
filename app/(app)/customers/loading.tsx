@@ -12,7 +12,7 @@ export default function Loading() {
         </div>
       </header>
 
-      <div className="content">
+      <div className="content" data-skeleton="list">
         <div className="card">
           <div className="card-body">
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
