@@ -58,21 +58,6 @@ export const STATUS_LABEL: Record<Status, string> = {
   nonaktif: 'Inactive',
 };
 
-/** Column headings used in the Excel export. */
-export const CUSTOMER_EXPORT_HEADERS: {
-  key: keyof CustomerInput;
-  label: string;
-  width: number;
-}[] = [
-  { key: 'company_name', label: 'Customer Company Name', width: 30 },
-  { key: 'cid', label: 'CID', width: 16 },
-  { key: 'account_username', label: 'Account Username', width: 24 },
-  { key: 'pic_name', label: 'PIC Name', width: 22 },
-  { key: 'pic_phone', label: 'PIC Phone', width: 20 },
-  { key: 'pic_email', label: 'PIC Email', width: 30 },
-  { key: 'am_username', label: 'Account Manager', width: 22 },
-];
-
 /** Best human label for a user: full name when present, otherwise username. */
 export function userLabel(u: Pick<User, 'full_name' | 'username'>): string {
   const nama = (u.full_name ?? '').trim();

@@ -38,7 +38,7 @@ Team fills the form  ->  Vercel (app)  ->  Apps Script (scribe)  ->  Google Spre
 | Screen | What it does |
 |---|---|
 | **Dashboard** | Stat cards plus two charts: accounts per Account Manager (donut) and accounts added per month (columns) |
-| **Customer List** | Search, filter by Account Manager, paging, edit, delete, export to Excel |
+| **Customer List** | Search, filter by Account Manager, paging, edit, delete |
 | **User Management** | Create users, reset passwords, activate/deactivate |
 | **My Account** | Everyone: own name/phone/email, and change password |
 
@@ -53,7 +53,6 @@ Charts are hand-drawn SVG — there is no charting library to go stale.
 | Session | JWT HS256 in an httpOnly cookie, 8 hours |
 | Password | scrypt (Node built-in), stored as a one-way hash |
 | Spreadsheet | Google Sheets via an Apps Script Web App |
-| Excel export | ExcelJS |
 
 ## Stored values
 
@@ -74,14 +73,13 @@ The app renders English labels (`Active`, `Inactive`, …) for them.
 ## Folder layout
 
 ```
-app/                      pages and the export endpoint
+app/                      pages
   (app)/                  signed-in pages (with the sidebar)
     page.tsx              dashboard
     customers/            list, new, edit
     users/                user management
     account/              my account
   login/  setup/  set-password/
-  api/export/             Excel download
 actions/                  server actions (sign-in, customers, users)
 components/               UI pieces, including the SVG charts
 lib/                      spreadsheet bridge, data, session, password, formatting

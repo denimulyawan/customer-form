@@ -93,7 +93,6 @@ export default async function CustomerList({
   const visible = results.slice(start, start + PER_PAGE);
 
   const filtered = Boolean(q || am);
-  const exportHref = `/api/export${queryString({ q, am })}`;
 
   const managerOptions = users
     .filter((u) => u.status === 'aktif')
@@ -110,9 +109,6 @@ export default async function CustomerList({
           </p>
         </div>
         <div className="topbar-actions">
-          <a className="btn" href={exportHref}>
-            ⤓ Export Excel
-          </a>
           <Link className="btn btn-primary" href="/customers/new">
             + Add Account
           </Link>

@@ -203,7 +203,7 @@ tersendiri sebelum bisa memakai apa pun.
 | Menu | Untuk siapa | Isinya |
 |---|---|---|
 | **Dashboard** | semua | Angka ringkasan + dua grafik |
-| **Customer List** | semua | Daftar akun pelanggan, pencarian, filter, edit, hapus, export Excel |
+| **Customer List** | semua | Daftar akun pelanggan, pencarian, filter, edit, hapus |
 | **User Management** | semua | Buat pengguna, setel ulang password, aktif/nonaktif |
 | **My Account** | semua | Nama, telepon, email sendiri + ganti password |
 
@@ -239,8 +239,8 @@ email SolarWinds, email Duo). Urutan memperbaruinya:
 **Customer List** → **+ Add Account**. Isi nama perusahaan, CID, username akun,
 pilih Account Manager, dan isi data PIC kalau ada.
 
-Tanggal dicatat otomatis oleh aplikasi dan **tidak ditampilkan di tabel** — tapi
-ikut terunduh di file Excel, dan dipakai untuk grafik "Accounts Added per Month".
+Tanggal dicatat otomatis oleh aplikasi dan **tidak ditampilkan di tabel** — datanya
+tetap tersimpan di spreadsheet dan dipakai untuk grafik "Accounts Added per Month".
 
 Username akun pelanggan **boleh kembar** — tidak ada pemeriksaan keunikan.
 
@@ -254,11 +254,6 @@ Jadi kalau nomor telepon atau email seseorang berubah:
 
 Supaya nama orang muncul (bukan sekadar username), isi kolom **Full name** di
 **My Account**.
-
-### Export Excel
-
-Di **Customer List**, klik **⤓ Export Excel**. Yang terunduh adalah data sesuai
-filter yang sedang aktif.
 
 ### Lupa password
 
