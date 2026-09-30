@@ -11,16 +11,33 @@
  *    2. Clear Code.gs, paste the whole contents of this file
  *    3. Replace TOKEN below with your own secret
  *    4. Save, then pick the `setup` function and Run it (grant access)
- *    5. Deploy -> New deployment -> Web app
+ *    5. Optionally run `keepWarmOn` once, so the script never goes to sleep
+ *    6. Deploy -> New deployment -> Web app
  *         Execute as     : Me
  *         Who has access : Anyone
- *    6. Copy the URL -> paste it as BRIDGE_URL in Vercel
- *    7. The TOKEN value -> paste it as BRIDGE_TOKEN in Vercel
+ *    7. Copy the URL -> paste it as BRIDGE_URL in Vercel
+ *    8. The TOKEN value -> paste it as BRIDGE_TOKEN in Vercel
  * ============================================================================
  */
 
 /** Secret token. MUST be changed. Must match BRIDGE_TOKEN in Vercel. */
 var TOKEN = 'GANTI_DENGAN_TOKEN_RAHASIA_KARANGANMU';
+
+/**
+ * How long a tab may be served from cache, in seconds.
+ *
+ * Reading a tab means calling the Sheets API, which costs about a second on
+ * every single page load. Serving a recent copy instead makes the app feel
+ * roughly twice as fast.
+ *
+ * The app clears the cache on every write, so the only thing that can lag
+ * behind is a change you make by hand inside the spreadsheet — and never by
+ * more than this many seconds.
+ */
+var CACHE_TTL_SECONDS = 30;
+
+/** Cache values are capped at 100 KB by Google; stay well clear of that. */
+var CACHE_MAX_CHARS = 90000;
 
 /**
  * Column layout for each tab. The order defines the column positions.
@@ -108,12 +125,44 @@ function setup() {
     if (d && ss.getSheets().length > 1) ss.deleteSheet(d);
   });
 
+  clearCache();
+
   Logger.log(
     'Setup finished. New tabs: ' +
       (dibuat.length ? dibuat.join(', ') : '(none, already complete)') +
       '. Tabs ready: ' +
       Object.keys(TABS).join(', ')
   );
+}
+
+/**
+ * Optional: run once so Google keeps the script awake.
+ * Creates a trigger that touches the spreadsheet every 5 minutes, which stops
+ * the first request of the day from taking 10–30 seconds.
+ */
+function keepWarmOn() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'keepWarm') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('keepWarm').timeBased().everyMinutes(5).create();
+  Logger.log('Keep-warm trigger installed: every 5 minutes.');
+}
+
+/** Removes the keep-warm trigger. */
+function keepWarmOff() {
+  var dihapus = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'keepWarm') {
+      ScriptApp.deleteTrigger(t);
+      dihapus += 1;
+    }
+  });
+  Logger.log('Keep-warm triggers removed: ' + dihapus);
+}
+
+/** Called by the trigger. Does the smallest possible spreadsheet read. */
+function keepWarm() {
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName('users').getLastRow();
 }
 
 /** Receives commands from the app (POST). */
@@ -186,6 +235,41 @@ function doGet() {
   });
 }
 
+/* ============================== Caching ============================== */
+
+function cacheKey(nama) {
+  return 'tab:v1:' + nama;
+}
+
+function readCache(nama) {
+  try {
+    var mentah = CacheService.getScriptCache().get(cacheKey(nama));
+    if (!mentah) return null;
+    return JSON.parse(mentah);
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeCache(nama, data) {
+  try {
+    var mentah = JSON.stringify(data);
+    if (mentah.length > CACHE_MAX_CHARS) return;
+    CacheService.getScriptCache().put(cacheKey(nama), mentah, CACHE_TTL_SECONDS);
+  } catch (err) {
+    // A failed cache write is never a problem — the next read simply hits Sheets.
+  }
+}
+
+function clearCache() {
+  try {
+    var keys = Object.keys(TABS).map(cacheKey);
+    CacheService.getScriptCache().removeAll(keys);
+  } catch (err) {
+    // ignore
+  }
+}
+
 /* ============================== Internals ============================== */
 
 function balas(obj) {
@@ -206,22 +290,28 @@ function ambilTab(nama) {
 }
 
 function bacaBaris(nama) {
+  var dariCache = readCache(nama);
+  if (dariCache !== null) return dariCache;
+
   var sh = ambilTab(nama);
   var head = TABS[nama];
   var akhir = sh.getLastRow();
-  if (akhir < 2) return [];
-
-  // getDisplayValues() keeps the stored plain-text formatting as-is.
-  var nilai = sh.getRange(2, 1, akhir - 1, head.length).getDisplayValues();
   var hasil = [];
-  nilai.forEach(function (r) {
-    if (String(r[0]).trim() === '') return; // skip blank rows
-    var obj = {};
-    head.forEach(function (h, i) {
-      obj[h] = r[i];
+
+  if (akhir >= 2) {
+    // getDisplayValues() keeps the stored plain-text formatting as-is.
+    var nilai = sh.getRange(2, 1, akhir - 1, head.length).getDisplayValues();
+    nilai.forEach(function (r) {
+      if (String(r[0]).trim() === '') return; // skip blank rows
+      var obj = {};
+      head.forEach(function (h, i) {
+        obj[h] = r[i];
+      });
+      hasil.push(obj);
     });
-    hasil.push(obj);
-  });
+  }
+
+  writeCache(nama, hasil);
   return hasil;
 }
 
@@ -256,6 +346,7 @@ function tambahBaris(nama, row) {
   });
 
   sh.appendRow(nilai);
+  clearCache();
   return { ok: true, data: { id: id } };
 }
 
@@ -274,6 +365,7 @@ function ubahBaris(nama, id, patch) {
   });
 
   sh.getRange(baris, 1, 1, head.length).setValues([sekarang]);
+  clearCache();
   return { ok: true, data: { id: String(id) } };
 }
 
@@ -282,5 +374,6 @@ function hapusBaris(nama, id) {
   var baris = cariBaris(sh, id);
   if (baris < 0) throw new Error('Record with id ' + id + ' was not found.');
   sh.deleteRow(baris);
+  clearCache();
   return { ok: true, data: { id: String(id) } };
 }

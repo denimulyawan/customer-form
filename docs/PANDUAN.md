@@ -84,6 +84,17 @@ Kalau kamu memperbarui dari versi lama, tab `akun` akan otomatis diganti nama
 menjadi **`old_akun_archive`** (datanya tidak dihapus, tapi tidak dipakai lagi).
 Boleh kamu hapus sendiri kalau sudah tidak diperlukan.
 
+### 1.5b Opsional tapi saya sarankan: cegah skrip tidur
+
+Google menidurkan Apps Script yang tidak dipakai. Akibatnya, **permintaan pertama
+setelah beberapa jam menganggur bisa memakan 10–30 detik.** Sisanya cepat.
+
+Supaya itu tidak terjadi, jalankan fungsi **`keepWarmOn`** sekali saja (dari
+dropdown fungsi yang sama, klik **Run**). Ini memasang pemicu yang menyentuh
+spreadsheet setiap 5 menit sehingga skrip tetap bangun.
+
+Kalau nanti tidak diinginkan, jalankan **`keepWarmOff`**.
+
 ### 1.6 Deploy jadi Web App
 
 1. **Deploy** → **New deployment**
@@ -297,8 +308,14 @@ Misalnya menambah kolom "Notes":
 
 - **Kuota Google:** sekitar 60 permintaan per menit per akun. Untuk tim kecil,
   tidak akan tersentuh.
-- **Kecepatan:** setiap halaman butuh 0,5–1,5 detik karena harus menanyakan ke
+- **Kecepatan:** setiap halaman butuh 1–3 detik karena harus menanyakan ke
   spreadsheet. Halaman menampilkan indikator "Loading" selama menunggu.
+- **Cache 30 detik:** supaya tidak membaca ulang spreadsheet di setiap halaman,
+  skrip menyimpan salinan hasil bacaan selama 30 detik. Setiap kali aplikasi
+  menyimpan data, salinan itu langsung dibuang. **Artinya: kalau kamu mengedit
+  spreadsheet secara manual (bukan lewat aplikasi), perubahan itu butuh sampai
+  30 detik untuk muncul di aplikasi.** Kalau perlu segera, jalankan fungsi
+  `clearCache` di editor Apps Script.
 - **Jumlah data:** nyaman sampai beberapa ribu baris. Kalau sudah puluhan ribu,
   saatnya pindah ke database sungguhan — struktur kodenya sudah dipisah di folder
   `lib/` supaya mudah diganti.
