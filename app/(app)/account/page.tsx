@@ -7,6 +7,9 @@ import { formatStamp } from '@/lib/format';
 import { ROLE_LABEL } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+// Apps Script can be slow on a cold start. Raise the function budget above
+// Vercel's 10-second default so a slow first request is not cut off.
+export const maxDuration = 60;
 
 export default async function MyAccountPage() {
   const loaded = await safeLoad(() => requireActiveUser());

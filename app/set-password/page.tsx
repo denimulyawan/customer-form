@@ -4,6 +4,9 @@ import { PasswordForm } from '@/components/AccountForms';
 import { requireSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+// Apps Script can be slow on a cold start. Raise the function budget above
+// Vercel's 10-second default so a slow first request is not cut off.
+export const maxDuration = 60;
 
 /**
  * Standalone page, deliberately OUTSIDE the (app) group.

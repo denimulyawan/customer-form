@@ -5,6 +5,9 @@ import { bridgeReady } from '@/lib/bridge';
 import { listUsers } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
+// Apps Script can be slow on a cold start. Raise the function budget above
+// Vercel's 10-second default so a slow first request is not cut off.
+export const maxDuration = 60;
 
 /**
  * Only reachable while the `users` tab is empty. It exists so that a fresh

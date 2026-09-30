@@ -9,6 +9,9 @@ import { safeLoad } from '@/lib/safe';
 import { formatStamp } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
+// Apps Script can be slow on a cold start. Raise the function budget above
+// Vercel's 10-second default so a slow first request is not cut off.
+export const maxDuration = 60;
 
 export default async function UserManagementPage({
   searchParams,

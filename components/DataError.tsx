@@ -39,10 +39,15 @@ export default function DataError({
             <h3 className="section-title">What usually fixes this</h3>
             <ol className="steps">
               <li>
+                <strong>It may just be slow.</strong> Google Apps Script goes to sleep when
+                it has not been used for a while, and the first request can take 10–30
+                seconds. Wait a moment and press <em>Try again</em> — the second attempt is
+                normally quick.
+              </li>
+              <li>
                 <strong>The Apps Script code is out of date.</strong> Open the spreadsheet →
                 Extensions → Apps Script, paste the current <span className="mono">Code.gs</span>,
-                run <span className="mono">setup</span>, then deploy a new version. This is by
-                far the most common cause after an update.
+                run <span className="mono">setup</span>, then deploy a new version.
               </li>
               <li>
                 <strong>The URL points at an old deployment.</strong> Copy the Web app URL

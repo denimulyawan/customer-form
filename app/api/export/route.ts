@@ -7,6 +7,9 @@ import { userLabel, type Customer, type User } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Apps Script can be slow on a cold start. Raise the function budget above
+// Vercel's 10-second default so a slow first request is not cut off.
+export const maxDuration = 60;
 
 function matches(c: Customer, q: string, am: string): boolean {
   if (am && (c.am_username ?? '').trim() !== am) return false;

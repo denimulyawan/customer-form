@@ -4,6 +4,12 @@ export type TabName = 'customers' | 'users';
 
 type Reply<T> = { ok: true; data: T } | { ok: false; error: string };
 
+/**
+ * Thrown when the bridge could not be reached or answered with something that
+ * is not our JSON. These are safe to retry for reads.
+ */
+export class BridgeUnreachableError extends Error {}
+
 /** Are the three secrets configured? */
 export function bridgeReady(): boolean {
   return Boolean(
@@ -11,7 +17,12 @@ export function bridgeReady(): boolean {
   );
 }
 
-async function call<T>(body: Record<string, unknown>): Promise<T> {
+const READ_TIMEOUT_MS = 20000;
+const READ_ATTEMPTS = 3;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function call<T>(body: Record<string, unknown>, timeoutMs?: number): Promise<T> {
   const url = process.env.BRIDGE_URL;
   const token = process.env.BRIDGE_TOKEN;
 
@@ -27,10 +38,14 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
       body: JSON.stringify({ token, ...body }),
       cache: 'no-store',
       redirect: 'follow',
+      // Only reads get a timeout. Aborting a write could leave the app unsure
+      // whether the row was actually saved.
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
     });
   } catch {
-    throw new Error(
-      'Could not reach the spreadsheet bridge. Check BRIDGE_URL and your connection.'
+    throw new BridgeUnreachableError(
+      'Could not reach the spreadsheet bridge in time. Apps Script can be slow when it ' +
+        'has not been used for a while — try again in a moment.'
     );
   }
 
@@ -40,7 +55,7 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   try {
     reply = JSON.parse(text) as Reply<T>;
   } catch {
-    throw new Error(
+    throw new BridgeUnreachableError(
       'The bridge returned something unreadable. Make sure the Apps Script Web App is ' +
         'deployed with "Who has access: Anyone" and that the URL ends with /exec. ' +
         'Response started with: ' +
@@ -52,6 +67,26 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   return reply.data;
 }
 
+/**
+ * Reads may be retried: they change nothing, so a second attempt is harmless.
+ * A slow first request is often just Apps Script waking up.
+ */
+async function read<T>(body: Record<string, unknown>): Promise<T> {
+  let last: unknown;
+
+  for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
+    try {
+      return await call<T>(body, READ_TIMEOUT_MS);
+    } catch (e) {
+      last = e;
+      if (!(e instanceof BridgeUnreachableError)) throw e;
+      if (attempt < READ_ATTEMPTS) await sleep(800 * attempt);
+    }
+  }
+
+  throw last;
+}
+
 export type TabContents = {
   customers?: Customer[];
   users?: User[];
@@ -59,7 +94,7 @@ export type TabContents = {
 
 /** Reads one or more tabs in a single round trip. */
 export async function readTabs(tabs: TabName[]): Promise<TabContents> {
-  return call<TabContents>({ action: 'list', sheets: tabs });
+  return read<TabContents>({ action: 'list', sheets: tabs });
 }
 
 export async function appendRow(
@@ -87,5 +122,5 @@ export async function pingBridge(): Promise<{
   waktu: string;
   tab: string[];
 }> {
-  return call({ action: 'ping' });
+  return read({ action: 'ping' });
 }
