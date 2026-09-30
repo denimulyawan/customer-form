@@ -2,8 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createCustomer, updateCustomer, deleteCustomer } from '@/lib/data';
-import { requireActiveUser } from '@/lib/auth';
+import {
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  activeUserGuard,
+} from '@/lib/data';
+import { requireSession } from '@/lib/auth';
 import { nowStamp } from '@/lib/format';
 import { bridgeReady } from '@/lib/bridge';
 import type { CustomerInput } from '@/lib/types';
@@ -37,11 +42,16 @@ function validate(input: CustomerInput): string | null {
   return null;
 }
 
+/**
+ * Note on speed: the session comes from the cookie, which costs nothing. The
+ * "is this account still active?" check travels WITH the write as a guard, so
+ * saving is a single trip to Google instead of two.
+ */
 export async function createCustomerAction(
   _prev: FormState,
   fd: FormData
 ): Promise<FormState> {
-  await requireActiveUser();
+  const session = await requireSession();
   if (!bridgeReady()) return { error: 'Configuration is incomplete.' };
 
   const input = readForm(fd);
@@ -49,7 +59,10 @@ export async function createCustomerAction(
   if (invalid) return { error: invalid };
 
   try {
-    await createCustomer({ ...input, created_at: nowStamp() });
+    await createCustomer(
+      { ...input, created_at: nowStamp() },
+      activeUserGuard(session.userId)
+    );
   } catch (e) {
     return { error: fromError(e) };
   }
@@ -63,7 +76,7 @@ export async function updateCustomerAction(
   _prev: FormState,
   fd: FormData
 ): Promise<FormState> {
-  await requireActiveUser();
+  const session = await requireSession();
   if (!bridgeReady()) return { error: 'Configuration is incomplete.' };
 
   const id = String(fd.get('id') ?? '').trim();
@@ -74,7 +87,7 @@ export async function updateCustomerAction(
   if (invalid) return { error: invalid };
 
   try {
-    await updateCustomer(id, input);
+    await updateCustomer(id, input, activeUserGuard(session.userId));
   } catch (e) {
     return { error: fromError(e) };
   }
@@ -86,8 +99,8 @@ export async function updateCustomerAction(
 
 /** Called from the delete button, after its confirmation dialog. */
 export async function deleteCustomerAction(id: string): Promise<void> {
-  await requireActiveUser();
-  await deleteCustomer(id);
+  const session = await requireSession();
+  await deleteCustomer(id, activeUserGuard(session.userId));
   revalidatePath('/');
   revalidatePath('/customers');
 }

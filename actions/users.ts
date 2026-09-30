@@ -2,10 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { listUsers, createUser, updateUser } from '@/lib/data';
+import { listUsers, createUser, updateUser, activeUserGuard } from '@/lib/data';
 import { hashPassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { nowStamp } from '@/lib/format';
-import { requireActiveUser } from '@/lib/auth';
+import { requireSession } from '@/lib/auth';
 
 export type FormState = { error?: string; success?: string } | null;
 
@@ -31,12 +31,16 @@ function isRedirect(e: unknown): boolean {
  * Creates a sign-in account. Every account is an administrator — there is no
  * role to choose — but the `role` column is still filled in so a read-only
  * role could be added later without migrating data.
+ *
+ * This one keeps a read before the write, because the username has to be
+ * checked for duplicates. Creating an account is rare, so the extra trip is
+ * worth the guaranteed unique username.
  */
 export async function createUserAction(
   _prev: FormState,
   fd: FormData
 ): Promise<FormState> {
-  await requireActiveUser();
+  const session = await requireSession();
 
   const username = String(fd.get('username') ?? '').trim().toLowerCase();
   const password = String(fd.get('password') ?? '');
@@ -59,19 +63,22 @@ export async function createUserAction(
     const taken = (await listUsers()).some((u) => u.username_lower === username);
     if (taken) return { error: `The username "${username}" is already taken.` };
 
-    await createUser({
-      username,
-      username_lower: username,
-      password_hash: hashPassword(password),
-      full_name,
-      phone,
-      email,
-      role: 'admin',
-      status: 'aktif',
-      must_change_password: 'ya',
-      created_at: nowStamp(),
-      last_login: '',
-    });
+    await createUser(
+      {
+        username,
+        username_lower: username,
+        password_hash: hashPassword(password),
+        full_name,
+        phone,
+        email,
+        role: 'admin',
+        status: 'aktif',
+        must_change_password: 'ya',
+        created_at: nowStamp(),
+        last_login: '',
+      },
+      activeUserGuard(session.userId)
+    );
   } catch (e) {
     return { error: fromError(e) };
   }
@@ -84,7 +91,7 @@ export async function resetPasswordAction(
   _prev: FormState,
   fd: FormData
 ): Promise<FormState> {
-  await requireActiveUser();
+  const session = await requireSession();
 
   const id = String(fd.get('id') ?? '').trim();
   const password = String(fd.get('password') ?? '');
@@ -95,10 +102,11 @@ export async function resetPasswordAction(
   }
 
   try {
-    await updateUser(id, {
-      password_hash: hashPassword(password),
-      must_change_password: 'ya',
-    });
+    await updateUser(
+      id,
+      { password_hash: hashPassword(password), must_change_password: 'ya' },
+      activeUserGuard(session.userId)
+    );
   } catch (e) {
     return { error: fromError(e) };
   }
@@ -108,7 +116,7 @@ export async function resetPasswordAction(
 }
 
 export async function toggleStatusAction(fd: FormData): Promise<void> {
-  const { user: me } = await requireActiveUser();
+  const session = await requireSession();
 
   const id = String(fd.get('id') ?? '').trim();
   const next = fd.get('status') === 'aktif' ? 'aktif' : 'nonaktif';
@@ -116,10 +124,10 @@ export async function toggleStatusAction(fd: FormData): Promise<void> {
   if (!id) redirect('/users?e=notfound');
 
   // Switching off your own account would lock you out immediately.
-  if (id === me.id) redirect('/users?e=self');
+  if (id === session.userId) redirect('/users?e=self');
 
   try {
-    await updateUser(id, { status: next });
+    await updateUser(id, { status: next }, activeUserGuard(session.userId));
   } catch (e) {
     if (isRedirect(e)) throw e;
     redirect('/users?e=failed');

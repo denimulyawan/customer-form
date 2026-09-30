@@ -315,10 +315,16 @@ Misalnya menambah kolom "Notes":
   spreadsheet. Halaman menampilkan indikator "Loading" selama menunggu.
 - **Cache 30 detik:** supaya tidak membaca ulang spreadsheet di setiap halaman,
   skrip menyimpan salinan hasil bacaan selama 30 detik. Setiap kali aplikasi
-  menyimpan data, salinan itu langsung dibuang. **Artinya: kalau kamu mengedit
-  spreadsheet secara manual (bukan lewat aplikasi), perubahan itu butuh sampai
-  30 detik untuk muncul di aplikasi.** Kalau perlu segera, jalankan fungsi
+  menyimpan data, salinan itu **langsung diperbarui** — jadi halaman yang muncul
+  setelah kamu menyimpan sudah siap tanpa membaca ulang. **Artinya: kalau kamu
+  mengedit spreadsheet secara manual (bukan lewat aplikasi), perubahan itu butuh
+  sampai 30 detik untuk muncul di aplikasi.** Kalau perlu segera, jalankan fungsi
   `clearCache` di editor Apps Script.
+- **Cek izin menempel pada penulisan:** aplikasi tidak lagi membaca spreadsheet
+  dulu hanya untuk memastikan akunmu masih aktif. Pemeriksaan itu dikirim
+  bersama perintah penyimpanan, jadi menyimpan cukup satu perjalanan ke Google.
+  Kalau kamu memakai skrip versi lama, aplikasi tetap jalan — hanya lebih lambat
+  dan pemeriksaan itu tidak dijalankan.
 - **Jumlah data:** nyaman sampai beberapa ribu baris. Kalau sudah puluhan ribu,
   saatnya pindah ke database sungguhan — struktur kodenya sudah dipisah di folder
   `lib/` supaya mudah diganti.

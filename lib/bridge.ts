@@ -97,23 +97,42 @@ export async function readTabs(tabs: TabName[]): Promise<TabContents> {
   return read<TabContents>({ action: 'list', sheets: tabs });
 }
 
+/**
+ * A permission check that travels with a write.
+ *
+ * The script verifies it inside the same call, before changing anything, so a
+ * save no longer needs a separate read just to confirm the signed-in account is
+ * still active — one trip to Google instead of two.
+ */
+export type WriteGuard = {
+  sheet: TabName;
+  id: string;
+  expect: Record<string, string>;
+};
+
 export async function appendRow(
   tab: TabName,
-  row: Record<string, string>
+  row: Record<string, string>,
+  guard?: WriteGuard
 ): Promise<{ id: string }> {
-  return call<{ id: string }>({ action: 'append', sheet: tab, row });
+  return call<{ id: string }>({ action: 'append', sheet: tab, row, guard });
 }
 
 export async function updateRow(
   tab: TabName,
   id: string,
-  patch: Record<string, string>
+  patch: Record<string, string>,
+  guard?: WriteGuard
 ): Promise<{ id: string }> {
-  return call<{ id: string }>({ action: 'update', sheet: tab, id, patch });
+  return call<{ id: string }>({ action: 'update', sheet: tab, id, patch, guard });
 }
 
-export async function removeRow(tab: TabName, id: string): Promise<{ id: string }> {
-  return call<{ id: string }>({ action: 'remove', sheet: tab, id });
+export async function removeRow(
+  tab: TabName,
+  id: string,
+  guard?: WriteGuard
+): Promise<{ id: string }> {
+  return call<{ id: string }>({ action: 'remove', sheet: tab, id, guard });
 }
 
 /** Used by the connection check during installation. */

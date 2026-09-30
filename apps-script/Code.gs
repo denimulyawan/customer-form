@@ -26,13 +26,12 @@ var TOKEN = 'GANTI_DENGAN_TOKEN_RAHASIA_KARANGANMU';
 /**
  * How long a tab may be served from cache, in seconds.
  *
- * Reading a tab means calling the Sheets API, which costs about a second on
- * every single page load. Serving a recent copy instead makes the app feel
- * roughly twice as fast.
+ * Reading a tab costs about a second, on every page load. Serving a recent copy
+ * instead roughly halves that. Writes refresh the cache as part of the same
+ * call, so the page shown right after saving is already warm.
  *
- * The app clears the cache on every write, so the only thing that can lag
- * behind is a change you make by hand inside the spreadsheet — and never by
- * more than this many seconds.
+ * The only thing that can lag behind is an edit you make by hand inside the
+ * spreadsheet, and never by more than this many seconds.
  */
 var CACHE_TTL_SECONDS = 30;
 
@@ -187,6 +186,7 @@ function doPost(e) {
         pesan: 'Bridge is alive.',
         waktu: new Date().toISOString(),
         tab: Object.keys(TABS),
+        fitur: ['cache', 'guard', 'refresh'],
       },
     });
   }
@@ -210,6 +210,10 @@ function doPost(e) {
   }
 
   try {
+    // The permission check travels WITH the write, so the app does not need a
+    // separate read just to confirm the signed-in account is still active.
+    periksaPenjaga(req.guard);
+
     switch (req.action) {
       case 'append':
         return balas(tambahBaris(req.sheet, req.row));
@@ -235,10 +239,40 @@ function doGet() {
   });
 }
 
+/* ============================== Permission ============================== */
+
+/**
+ * Optional guard sent by the app: { sheet, id, expect: { column: value } }.
+ * Checked inside the same call as the write, before anything is changed.
+ */
+function periksaPenjaga(guard) {
+  if (!guard || !guard.sheet || !guard.id) return;
+
+  var head = TABS[guard.sheet];
+  if (!head) throw new Error('Guard names an unknown tab: ' + guard.sheet);
+
+  var sh = ambilTab(guard.sheet);
+  var baris = cariBaris(sh, guard.id);
+  if (baris < 0) throw new Error('Your account no longer exists. Please sign in again.');
+
+  var nilai = sh.getRange(baris, 1, 1, head.length).getValues()[0];
+  var barisObj = {};
+  head.forEach(function (h, i) {
+    barisObj[h] = String(nilai[i] === null || nilai[i] === undefined ? '' : nilai[i]);
+  });
+
+  var harap = guard.expect || {};
+  Object.keys(harap).forEach(function (k) {
+    if (barisObj[k] !== String(harap[k])) {
+      throw new Error('Your account is not allowed to make changes. Please sign in again.');
+    }
+  });
+}
+
 /* ============================== Caching ============================== */
 
 function cacheKey(nama) {
-  return 'tab:v1:' + nama;
+  return 'tab:v2:' + nama;
 }
 
 function readCache(nama) {
@@ -258,6 +292,19 @@ function writeCache(nama, data) {
     CacheService.getScriptCache().put(cacheKey(nama), mentah, CACHE_TTL_SECONDS);
   } catch (err) {
     // A failed cache write is never a problem — the next read simply hits Sheets.
+  }
+}
+
+/**
+ * Called after a write. Instead of merely dropping the cache, this reads the
+ * tab once and stores the result, so the page the app shows straight after
+ * saving is served without touching the Sheets API again.
+ */
+function segarkanCache(nama) {
+  try {
+    writeCache(nama, bacaBarisPaksa(nama));
+  } catch (err) {
+    clearCache();
   }
 }
 
@@ -289,10 +336,8 @@ function ambilTab(nama) {
   return sh;
 }
 
-function bacaBaris(nama) {
-  var dariCache = readCache(nama);
-  if (dariCache !== null) return dariCache;
-
+/** Reads the tab straight from the spreadsheet, ignoring the cache. */
+function bacaBarisPaksa(nama) {
   var sh = ambilTab(nama);
   var head = TABS[nama];
   var akhir = sh.getLastRow();
@@ -311,6 +356,14 @@ function bacaBaris(nama) {
     });
   }
 
+  return hasil;
+}
+
+function bacaBaris(nama) {
+  var dariCache = readCache(nama);
+  if (dariCache !== null) return dariCache;
+
+  var hasil = bacaBarisPaksa(nama);
   writeCache(nama, hasil);
   return hasil;
 }
@@ -346,7 +399,7 @@ function tambahBaris(nama, row) {
   });
 
   sh.appendRow(nilai);
-  clearCache();
+  segarkanCache(nama);
   return { ok: true, data: { id: id } };
 }
 
@@ -365,7 +418,7 @@ function ubahBaris(nama, id, patch) {
   });
 
   sh.getRange(baris, 1, 1, head.length).setValues([sekarang]);
-  clearCache();
+  segarkanCache(nama);
   return { ok: true, data: { id: String(id) } };
 }
 
@@ -374,6 +427,6 @@ function hapusBaris(nama, id) {
   var baris = cariBaris(sh, id);
   if (baris < 0) throw new Error('Record with id ' + id + ' was not found.');
   sh.deleteRow(baris);
-  clearCache();
+  segarkanCache(nama);
   return { ok: true, data: { id: String(id) } };
 }
