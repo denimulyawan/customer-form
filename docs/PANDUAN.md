@@ -204,8 +204,11 @@ tersendiri sebelum bisa memakai apa pun.
 |---|---|---|
 | **Dashboard** | semua | Angka ringkasan + dua grafik |
 | **Customer List** | semua | Daftar akun pelanggan, pencarian, filter, edit, hapus, export Excel |
-| **User Management** | admin | Buat pengguna, setel ulang password, aktif/nonaktif |
+| **User Management** | semua | Buat pengguna, setel ulang password, aktif/nonaktif |
 | **My Account** | semua | Nama, telepon, email sendiri + ganti password |
+
+> **Semua akun yang bisa masuk adalah administrator.** Tidak ada pilihan peran
+> saat membuat pengguna, dan tidak ada halaman yang dibatasi peran.
 
 ---
 
@@ -246,7 +249,7 @@ Username akun pelanggan **boleh kembar** — tidak ada pemeriksaan keunikan.
 Account Manager dipilih dari daftar pengguna aplikasi, bukan diketik bebas.
 Jadi kalau nomor telepon atau email seseorang berubah:
 
-1. **User Management** (kalau admin) atau **My Account** untuk mengubah datanya
+1. **User Management** atau **My Account** untuk mengubah datanya
 2. Semua catatan pelanggan miliknya otomatis menampilkan data terbaru
 
 Supaya nama orang muncul (bukan sekadar username), isi kolom **Full name** di

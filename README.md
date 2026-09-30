@@ -39,7 +39,7 @@ Team fills the form  ->  Vercel (app)  ->  Apps Script (scribe)  ->  Google Spre
 |---|---|
 | **Dashboard** | Stat cards plus two charts: accounts per Account Manager (donut) and accounts added per month (columns) |
 | **Customer List** | Search, filter by Account Manager, paging, edit, delete, export to Excel |
-| **User Management** | Admin only: create users, reset passwords, activate/deactivate |
+| **User Management** | Create users, reset passwords, activate/deactivate |
 | **My Account** | Everyone: own name/phone/email, and change password |
 
 Charts are hand-drawn SVG — there is no charting library to go stale.
@@ -62,9 +62,12 @@ language may change while the data must not:
 
 | Column | Values |
 |---|---|
-| `role` | `admin` \| `operator` |
+| `role` | always `admin` — kept so a read-only role could be reintroduced later |
 | `status` | `aktif` \| `nonaktif` |
 | `must_change_password` | `ya` \| `tidak` |
+
+**Every sign-in account is an administrator.** There is no role to choose when
+creating a user, and no page is restricted by role.
 
 The app renders English labels (`Active`, `Inactive`, …) for them.
 

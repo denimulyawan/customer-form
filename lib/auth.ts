@@ -31,9 +31,9 @@ export async function requireActiveUser(): Promise<{ session: Session; user: Use
   return { session, user };
 }
 
-/** Same as above, but admin only. */
-export async function requireAdmin(): Promise<{ session: Session; user: User }> {
-  const hasil = await requireActiveUser();
-  if (hasil.user.role !== 'admin') redirect('/?e=notadmin');
-  return hasil;
-}
+/**
+ * Note on roles: every sign-in account in this app is an administrator, so
+ * there is no separate "admin only" gate. The `role` column still exists in the
+ * spreadsheet and is always written as `admin`, so a read-only role could be
+ * brought back later without touching the stored data.
+ */

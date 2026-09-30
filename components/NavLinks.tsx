@@ -2,28 +2,31 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { Role } from '@/lib/types';
 
 type Item = {
   href: string;
   label: string;
   icon: string;
-  adminOnly?: boolean;
 };
 
+/**
+ * Every sign-in account is an administrator, so nothing here is filtered by
+ * role. If a read-only role is ever brought back, this is where it would be
+ * gated again.
+ */
 const MENU: Item[] = [
   { href: '/', label: 'Dashboard', icon: '▦' },
   { href: '/customers', label: 'Customer List', icon: '▤' },
-  { href: '/users', label: 'User Management', icon: '◍', adminOnly: true },
+  { href: '/users', label: 'User Management', icon: '◍' },
   { href: '/account', label: 'My Account', icon: '⌘' },
 ];
 
-export default function NavLinks({ role }: { role: Role }) {
+export default function NavLinks() {
   const pathname = usePathname() ?? '/';
 
   return (
     <nav className="nav">
-      {MENU.filter((item) => !item.adminOnly || role === 'admin').map((item) => {
+      {MENU.map((item) => {
         const active =
           item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
         return (

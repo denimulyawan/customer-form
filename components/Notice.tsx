@@ -9,10 +9,8 @@ const SUCCESS: Record<string, string> = {
 };
 
 const ERRORS: Record<string, string> = {
-  inactive: 'Your account is deactivated. Please contact your admin.',
-  notadmin: 'That page is for admins only.',
+  inactive: 'Your account is deactivated. Please contact another admin.',
   self: 'You cannot deactivate your own account.',
-  lastadmin: 'This is the only active admin, so it cannot be deactivated.',
   notfound: 'That record could not be found.',
   failed: 'Something went wrong while saving. Please try again.',
 };

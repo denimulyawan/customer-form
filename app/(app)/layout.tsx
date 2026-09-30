@@ -30,12 +30,12 @@ export default async function AppLayout({
         </div>
       </div>
 
-      <NavLinks role={session.role} />
+      <NavLinks />
 
       <div className="sidebar-foot">
         <div className="who">
           <strong>{session.username}</strong>
-          <small>{session.role === 'admin' ? 'Admin' : 'Operator'}</small>
+          <small>Administrator</small>
         </div>
         <form action={signOutAction}>
           <button className="btn btn-light btn-small btn-block" type="submit">

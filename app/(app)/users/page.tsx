@@ -21,15 +21,14 @@ export default async function UserManagementPage({
 }) {
   const sp = await searchParams;
 
-  // ONE read of the spreadsheet, not two. The admin's own record is already
-  // inside this list, so fetching it separately — as requireAdmin() does —
-  // doubled the wait on this page for no benefit.
+  // ONE read of the spreadsheet, not two. The signed-in user's own record is
+  // already inside this list, so fetching it separately doubled the wait on
+  // this page for no benefit.
   const loaded = await safeLoad(async () => {
     const session = await requireSession();
     const users = await listUsers();
     const me = users.find((u) => u.id === session.userId);
     if (!me || me.status !== 'aktif') redirect('/login?e=inactive');
-    if (me.role !== 'admin') redirect('/?e=notadmin');
     return { me, users };
   });
   if (!loaded.ok) return <DataError message={loaded.error} />;
@@ -39,9 +38,8 @@ export default async function UserManagementPage({
     String(a.username).localeCompare(String(b.username))
   );
 
-  const activeAdmins = sorted.filter(
-    (u) => u.role === 'admin' && u.status === 'aktif'
-  ).length;
+  // Every account is an administrator, so there is no role to show.
+  const activeCount = sorted.filter((u) => u.status === 'aktif').length;
 
   return (
     <>
@@ -49,7 +47,7 @@ export default async function UserManagementPage({
         <div>
           <h1>User Management</h1>
           <p>
-            {sorted.length} sign-in account(s) · {activeAdmins} active admin(s)
+            {sorted.length} sign-in account(s) · {activeCount} active
           </p>
         </div>
       </header>
@@ -85,7 +83,6 @@ export default async function UserManagementPage({
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Role</th>
                   <th>Status</th>
                   <th>Last sign-in</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
@@ -109,13 +106,6 @@ export default async function UserManagementPage({
                           {[u.full_name, u.email, u.phone].filter(Boolean).join(' · ') ||
                             'no details yet'}
                         </div>
-                      </td>
-                      <td>
-                        <span
-                          className={u.role === 'admin' ? 'badge badge-blue' : 'badge badge-gray'}
-                        >
-                          {u.role === 'admin' ? 'Admin' : 'Operator'}
-                        </span>
                       </td>
                       <td>
                         <span

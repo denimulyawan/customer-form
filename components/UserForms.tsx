@@ -22,7 +22,7 @@ export function CreateUserForm() {
         </div>
       ) : null}
 
-      <div className="grid-3">
+      <div className="grid-2">
         <div className="field">
           <label htmlFor="username">Username</label>
           <input
@@ -45,14 +45,6 @@ export function CreateUserForm() {
             placeholder="e.g. Budi Santoso"
             required
           />
-        </div>
-
-        <div className="field">
-          <label htmlFor="role">Role</label>
-          <select id="role" name="role" defaultValue="operator">
-            <option value="operator">Operator — records only</option>
-            <option value="admin">Admin — also manages users</option>
-          </select>
         </div>
       </div>
 
