@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import NavLinks from '@/components/NavLinks';
+import Shell from '@/components/Shell';
 import { signOutAction } from '@/actions/auth';
 import { requireSession } from '@/lib/auth';
 
@@ -19,33 +20,31 @@ export default async function AppLayout({
   // outside this layout group on purpose, so this cannot loop.
   if (session.mustChangePassword) redirect('/set-password');
 
-  return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">MA</span>
-          <div className="brand-text">
-            <strong>Account Manager</strong>
-            <small>Customer Accounts</small>
-          </div>
+  const sidebar = (
+    <>
+      <div className="brand">
+        <span className="brand-mark">MA</span>
+        <div className="brand-text">
+          <strong>Account Manager</strong>
+          <small>Customer Accounts</small>
         </div>
+      </div>
 
-        <NavLinks role={session.role} />
+      <NavLinks role={session.role} />
 
-        <div className="sidebar-foot">
-          <div className="who">
-            <strong>{session.username}</strong>
-            <small>{session.role === 'admin' ? 'Admin' : 'Operator'}</small>
-          </div>
-          <form action={signOutAction}>
-            <button className="btn btn-light btn-small btn-block" type="submit">
-              Sign out
-            </button>
-          </form>
+      <div className="sidebar-foot">
+        <div className="who">
+          <strong>{session.username}</strong>
+          <small>{session.role === 'admin' ? 'Admin' : 'Operator'}</small>
         </div>
-      </aside>
-
-      <div className="main">{children}</div>
-    </div>
+        <form action={signOutAction}>
+          <button className="btn btn-light btn-small btn-block" type="submit">
+            Sign out
+          </button>
+        </form>
+      </div>
+    </>
   );
+
+  return <Shell sidebar={sidebar}>{children}</Shell>;
 }
