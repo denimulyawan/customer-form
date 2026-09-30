@@ -4,35 +4,36 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Role } from '@/lib/types';
 
-type Menu = {
+type Item = {
   href: string;
   label: string;
-  ikon: string;
-  adminSaja?: boolean;
+  icon: string;
+  adminOnly?: boolean;
 };
 
-const MENU: Menu[] = [
-  { href: '/', label: 'Dashboard', ikon: '▦' },
-  { href: '/akun', label: 'Daftar Akun', ikon: '▤' },
-  { href: '/pengguna', label: 'Pengguna', ikon: '◍', adminSaja: true },
-  { href: '/ganti-password', label: 'Ganti Password', ikon: '⌘' },
+const MENU: Item[] = [
+  { href: '/', label: 'Dashboard', icon: '▦' },
+  { href: '/customers', label: 'Customer List', icon: '▤' },
+  { href: '/users', label: 'User Management', icon: '◍', adminOnly: true },
+  { href: '/account', label: 'My Account', icon: '⌘' },
 ];
 
 export default function NavLinks({ role }: { role: Role }) {
-  const jalur = usePathname() ?? '/';
+  const pathname = usePathname() ?? '/';
 
   return (
     <nav className="nav">
-      {MENU.filter((m) => !m.adminSaja || role === 'admin').map((m) => {
-        const aktif = m.href === '/' ? jalur === '/' : jalur.startsWith(m.href);
+      {MENU.filter((item) => !item.adminOnly || role === 'admin').map((item) => {
+        const active =
+          item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
         return (
           <Link
-            key={m.href}
-            href={m.href}
-            className={aktif ? 'nav-item aktif' : 'nav-item'}
+            key={item.href}
+            href={item.href}
+            className={active ? 'nav-item active' : 'nav-item'}
           >
-            <span className="ikon">{m.ikon}</span>
-            {m.label}
+            <span className="icon">{item.icon}</span>
+            {item.label}
           </Link>
         );
       })}

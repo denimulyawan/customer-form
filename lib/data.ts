@@ -1,54 +1,52 @@
-import { ambilTab, tambahBaris, ubahBaris, hapusBaris } from './bridge';
-import type { Akun, User } from './types';
+import { readTabs, appendRow, updateRow, removeRow } from './bridge';
+import type { Customer, CustomerInput, User, UserInput } from './types';
 
-export async function daftarAkun(): Promise<Akun[]> {
-  const isi = await ambilTab(['akun']);
-  return (isi.akun ?? []) as Akun[];
+export async function listCustomers(): Promise<Customer[]> {
+  const isi = await readTabs(['customers']);
+  return (isi.customers ?? []) as Customer[];
 }
 
-export async function daftarPengguna(): Promise<User[]> {
-  const isi = await ambilTab(['users']);
+export async function listUsers(): Promise<User[]> {
+  const isi = await readTabs(['users']);
   return (isi.users ?? []) as User[];
 }
 
-/** Ambil dua tab sekaligus — satu kali perjalanan ke jembatan. */
-export async function daftarAkunDanPengguna(): Promise<{
-  akun: Akun[];
-  pengguna: User[];
-}> {
-  const isi = await ambilTab(['akun', 'users']);
+/** Both tabs at once — one round trip to the bridge. */
+export async function loadBoth(): Promise<{ customers: Customer[]; users: User[] }> {
+  const isi = await readTabs(['customers', 'users']);
   return {
-    akun: (isi.akun ?? []) as Akun[],
-    pengguna: (isi.users ?? []) as User[],
+    customers: (isi.customers ?? []) as Customer[],
+    users: (isi.users ?? []) as User[],
   };
 }
 
-export async function simpanAkunBaru(input: Omit<Akun, 'id'>): Promise<string> {
-  const { id } = await tambahBaris('akun', { ...input });
-  return id;
-}
-
-export async function perbaruiAkun(
-  id: string,
-  patch: Partial<Omit<Akun, 'id'>>
-): Promise<void> {
-  await ubahBaris('akun', id, { ...patch } as Record<string, string>);
-}
-
-export async function buangAkun(id: string): Promise<void> {
-  await hapusBaris('akun', id);
-}
-
-export async function simpanPenggunaBaru(
-  input: Omit<User, 'id'>
+export async function createCustomer(
+  input: CustomerInput & { created_at: string }
 ): Promise<string> {
-  const { id } = await tambahBaris('users', { ...input });
+  const { id } = await appendRow('customers', { ...input });
   return id;
 }
 
-export async function perbaruiPengguna(
+export async function updateCustomer(
   id: string,
-  patch: Partial<Omit<User, 'id'>>
+  patch: Partial<CustomerInput>
 ): Promise<void> {
-  await ubahBaris('users', id, { ...patch } as Record<string, string>);
+  await updateRow('customers', id, { ...patch } as Record<string, string>);
+}
+
+export async function deleteCustomer(id: string): Promise<void> {
+  await removeRow('customers', id);
+}
+
+export async function createUser(input: UserInput): Promise<string> {
+  const { id } = await appendRow('users', { ...input });
+  return id;
+}
+
+export async function updateUser(id: string, patch: Partial<User>): Promise<void> {
+  await updateRow('users', id, { ...patch } as Record<string, string>);
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await removeRow('users', id);
 }

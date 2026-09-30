@@ -1,20 +1,20 @@
 'use client';
 
 import { useActionState } from 'react';
-import { masukAction, type HasilForm } from '@/actions/auth';
+import { signInAction, type FormState } from '@/actions/auth';
 
-export default function FormLogin() {
-  const [keadaan, kirim, sedang] = useActionState<HasilForm, FormData>(
-    masukAction,
+export default function LoginForm() {
+  const [state, submit, pending] = useActionState<FormState, FormData>(
+    signInAction,
     null
   );
 
   return (
-    <form action={kirim}>
-      {keadaan?.error ? (
+    <form action={submit}>
+      {state?.error ? (
         <div className="alert alert-error">
           <span>!</span>
-          <span>{keadaan.error}</span>
+          <span>{state.error}</span>
         </div>
       ) : null}
 
@@ -43,8 +43,8 @@ export default function FormLogin() {
         />
       </div>
 
-      <button className="btn btn-utama btn-lebar" disabled={sedang}>
-        {sedang ? 'Memeriksa…' : 'Masuk'}
+      <button className="btn btn-primary btn-block" disabled={pending}>
+        {pending ? 'Signing in…' : 'Sign in'}
       </button>
     </form>
   );

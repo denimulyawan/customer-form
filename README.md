@@ -1,74 +1,110 @@
 # customer-form
 
-Aplikasi web internal untuk mencatat akun pelanggan — **username, email SolarWinds,
-email Duo, nama pelanggan, PIC, dan tanggal input**. Pengganti Google Form, dengan
-tampilan dashboard.
+Internal web app for recording the **customer accounts** an IT team manages.
 
 > 📖 **Panduan pemasangan langkah demi langkah (Bahasa Indonesia):
 > [docs/PANDUAN.md](docs/PANDUAN.md)**
 
-## Cara kerjanya
+## What it records
 
-```
-Tim isi form  ->  Vercel (aplikasi)  ->  Apps Script (juru tulis)  ->  Google Spreadsheet
-```
-
-Tim hanya memakai aplikasi. Spreadsheet hanya dibuka oleh admin.
-
-| Bagian | Perannya |
+| Field | Notes |
 |---|---|
-| Google Spreadsheet | Tempat data disimpan — 2 tab: `akun` dan `users` |
-| Google Apps Script | Juru tulis di dalam spreadsheet (`apps-script/Code.gs`) |
-| GitHub | Tempat kode |
-| Vercel | Menjalankan aplikasi & menyimpan 3 nilai rahasia |
+| Customer Company Name | |
+| CID | Customer ID |
+| Account Username | duplicates are allowed, no uniqueness check |
+| PIC name / phone / email | the contact person at the customer |
+| Account Manager | picked from User Management — an app user |
+| Date recorded | filled in automatically, never shown in tables |
 
-## Teknologi
+The Account Manager is **not** free text: it points at a user in User Management,
+so that person's name, phone and email stay in one place and the dashboard can
+group accounts by manager.
 
-| Bagian | Pilihan |
+## How it fits together
+
+```
+Team fills the form  ->  Vercel (app)  ->  Apps Script (scribe)  ->  Google Spreadsheet
+```
+
+| Part | Role |
+|---|---|
+| Google Spreadsheet | The database — two tabs: `customers` and `users` |
+| Google Apps Script | The scribe inside the sheet (`apps-script/Code.gs`) |
+| GitHub | Holds the code |
+| Vercel | Runs the app and stores the three secrets |
+
+## Screens
+
+| Screen | What it does |
+|---|---|
+| **Dashboard** | Stat cards plus two charts: accounts per Account Manager (donut) and accounts added per month (columns) |
+| **Customer List** | Search, filter by Account Manager, paging, edit, delete, export to Excel |
+| **User Management** | Admin only: create users, reset passwords, activate/deactivate |
+| **My Account** | Everyone: own name/phone/email, and change password |
+
+Charts are hand-drawn SVG — there is no charting library to go stale.
+
+## Tech
+
+| Part | Choice |
 |---|---|
 | Framework | Next.js 15 (App Router) + TypeScript |
-| Tampilan | CSS sendiri, tanpa framework — tidak ada versi yang bisa berubah |
-| Sesi login | JWT HS256 di cookie httpOnly (masa berlaku 8 jam) |
-| Password | scrypt (bawaan Node), disimpan sebagai hash |
-| Spreadsheet | Google Sheets lewat Web App Apps Script |
-| Export | ExcelJS (.xlsx) |
+| Styling | Hand-written CSS, no framework |
+| Session | JWT HS256 in an httpOnly cookie, 8 hours |
+| Password | scrypt (Node built-in), stored as a one-way hash |
+| Spreadsheet | Google Sheets via an Apps Script Web App |
+| Excel export | ExcelJS |
 
-## Isi folder
+## Stored values
+
+The spreadsheet stores a few values that stay language-neutral, because the UI
+language may change while the data must not:
+
+| Column | Values |
+|---|---|
+| `role` | `admin` \| `operator` |
+| `status` | `aktif` \| `nonaktif` |
+| `must_change_password` | `ya` \| `tidak` |
+
+The app renders English labels (`Active`, `Inactive`, …) for them.
+
+## Folder layout
 
 ```
-app/                    halaman & endpoint
-  (app)/                halaman yang butuh login (ada sidebar)
-    page.tsx            dashboard
-    akun/               daftar, tambah, edit akun pelanggan
-    pengguna/           kelola akun login (khusus admin)
-  login/  setup/  ganti-password/
-  api/export/           unduh Excel
-actions/                server action (login, CRUD, kelola pengguna)
-components/             komponen tampilan
-lib/                    bridge spreadsheet, data, sesi, password, format
-apps-script/Code.gs     skrip untuk ditempel di Google Apps Script
-docs/PANDUAN.md         panduan pemasangan
+app/                      pages and the export endpoint
+  (app)/                  signed-in pages (with the sidebar)
+    page.tsx              dashboard
+    customers/            list, new, edit
+    users/                user management
+    account/              my account
+  login/  setup/  set-password/
+  api/export/             Excel download
+actions/                  server actions (sign-in, customers, users)
+components/               UI pieces, including the SVG charts
+lib/                      spreadsheet bridge, data, session, password, formatting
+apps-script/Code.gs       the script to paste into Google Apps Script
+docs/PANDUAN.md           installation guide
 ```
 
-## Menjalankan di komputer sendiri
+## Running locally
 
 ```bash
 npm install
-cp .env.example .env.local     # lalu isi ketiga nilainya
-npm run dev                    # buka http://localhost:3000
+cp .env.example .env.local     # then fill in the three values
+npm run dev                    # http://localhost:3000
 ```
 
-## Fitur
+## Security notes
 
-- Login username + password, admin yang membuatkan akun, wajib ganti password di
-  login pertama
-- Dua peran: `admin` (kelola pengguna) dan `operator` (isi data)
-- Dashboard: total akun, jumlah pelanggan, input hari ini, jumlah PIC
-- Daftar akun dengan pencarian, filter PIC & tanggal, paging 25 baris
-- Tambah / edit / hapus dengan dialog konfirmasi
-- Export Excel (mengikuti filter yang sedang aktif)
-- Penguncian sementara setelah 8 kali gagal login
+- Passwords are hashed with scrypt. Nobody — not even an admin — can read them.
+  A forgotten password can only be reset, never recovered.
+- Every write re-checks the user's status in the spreadsheet, so deactivating an
+  account blocks saving immediately.
+- Repeated failed sign-ins are throttled.
+- The Web App must be deployed as **Anyone**, because Vercel calls it from a
+  server. The `BRIDGE_TOKEN` is what actually guards the data — treat it as a
+  password and never commit it.
 
-## Biaya
+## Cost
 
-Rp0. GitHub, Vercel, Google Sheets, dan Apps Script semuanya gratis.
+Zero. GitHub, Vercel, Google Sheets and Apps Script are all free.

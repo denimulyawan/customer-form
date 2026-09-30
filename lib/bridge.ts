@@ -1,22 +1,22 @@
-import type { Akun, User } from './types';
+import type { Customer, User } from './types';
 
-export type NamaTab = 'akun' | 'users';
+export type TabName = 'customers' | 'users';
 
-type Jawaban<T> = { ok: true; data: T } | { ok: false; error: string };
+type Reply<T> = { ok: true; data: T } | { ok: false; error: string };
 
-/** Apakah ketiga nilai rahasia sudah terpasang? */
-export function jembatanSiap(): boolean {
+/** Are the three secrets configured? */
+export function bridgeReady(): boolean {
   return Boolean(
     process.env.BRIDGE_URL && process.env.BRIDGE_TOKEN && process.env.AUTH_SECRET
   );
 }
 
-async function panggil<T>(body: Record<string, unknown>): Promise<T> {
+async function call<T>(body: Record<string, unknown>): Promise<T> {
   const url = process.env.BRIDGE_URL;
   const token = process.env.BRIDGE_TOKEN;
 
   if (!url || !token) {
-    throw new Error('BRIDGE_URL atau BRIDGE_TOKEN belum di-set di pengaturan Vercel.');
+    throw new Error('BRIDGE_URL or BRIDGE_TOKEN is not set in Vercel.');
   }
 
   let res: Response;
@@ -30,62 +30,62 @@ async function panggil<T>(body: Record<string, unknown>): Promise<T> {
     });
   } catch {
     throw new Error(
-      'Tidak bisa menghubungi jembatan spreadsheet. Periksa BRIDGE_URL dan koneksi internet.'
+      'Could not reach the spreadsheet bridge. Check BRIDGE_URL and your connection.'
     );
   }
 
-  const teks = await res.text();
+  const text = await res.text();
 
-  let jawab: Jawaban<T>;
+  let reply: Reply<T>;
   try {
-    jawab = JSON.parse(teks) as Jawaban<T>;
+    reply = JSON.parse(text) as Reply<T>;
   } catch {
     throw new Error(
-      'Jawaban dari jembatan tidak bisa dibaca. Pastikan Web App Apps Script di-deploy ' +
-        'dengan "Who has access: Anyone" dan URL-nya berakhiran /exec. ' +
-        'Cuplikan jawaban: ' +
-        teks.slice(0, 160)
+      'The bridge returned something unreadable. Make sure the Apps Script Web App is ' +
+        'deployed with "Who has access: Anyone" and that the URL ends with /exec. ' +
+        'Response started with: ' +
+        text.slice(0, 160)
     );
   }
 
-  if (!jawab.ok) throw new Error(jawab.error);
-  return jawab.data;
+  if (!reply.ok) throw new Error(reply.error);
+  return reply.data;
 }
 
-export type IsiTab = {
-  akun?: Akun[];
+export type TabContents = {
+  customers?: Customer[];
   users?: User[];
 };
 
-/** Mengambil isi satu atau beberapa tab sekaligus (satu kali perjalanan). */
-export async function ambilTab(tabs: NamaTab[]): Promise<IsiTab> {
-  return panggil<IsiTab>({ action: 'list', sheets: tabs });
+/** Reads one or more tabs in a single round trip. */
+export async function readTabs(tabs: TabName[]): Promise<TabContents> {
+  return call<TabContents>({ action: 'list', sheets: tabs });
 }
 
-export async function tambahBaris(
-  tab: NamaTab,
+export async function appendRow(
+  tab: TabName,
   row: Record<string, string>
 ): Promise<{ id: string }> {
-  return panggil<{ id: string }>({ action: 'append', sheet: tab, row });
+  return call<{ id: string }>({ action: 'append', sheet: tab, row });
 }
 
-export async function ubahBaris(
-  tab: NamaTab,
+export async function updateRow(
+  tab: TabName,
   id: string,
   patch: Record<string, string>
 ): Promise<{ id: string }> {
-  return panggil<{ id: string }>({ action: 'update', sheet: tab, id, patch });
+  return call<{ id: string }>({ action: 'update', sheet: tab, id, patch });
 }
 
-export async function hapusBaris(tab: NamaTab, id: string): Promise<{ id: string }> {
-  return panggil<{ id: string }>({ action: 'remove', sheet: tab, id });
+export async function removeRow(tab: TabName, id: string): Promise<{ id: string }> {
+  return call<{ id: string }>({ action: 'remove', sheet: tab, id });
 }
 
-/** Untuk tombol "Tes koneksi" saat pemasangan. */
-export async function pingJembatan(): Promise<{
+/** Used by the connection check during installation. */
+export async function pingBridge(): Promise<{
   pesan: string;
   waktu: string;
   tab: string[];
 }> {
-  return panggil({ action: 'ping' });
+  return call({ action: 'ping' });
 }

@@ -2,150 +2,175 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { daftarPengguna, perbaruiPengguna, simpanPenggunaBaru } from '@/lib/data';
-import { hashPassword, verifyPassword, PANJANG_MIN_PASSWORD } from '@/lib/password';
-import { SESSION_COOKIE, aturanCookie, buatTokenSesi } from '@/lib/session';
-import { capWaktu } from '@/lib/format';
-import { jembatanSiap } from '@/lib/bridge';
-import { wajibSesi } from '@/lib/auth';
+import { listUsers, createUser, updateUser } from '@/lib/data';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
+import {
+  SESSION_COOKIE,
+  createSessionToken,
+  sessionCookieOptions,
+} from '@/lib/session';
+import { nowStamp } from '@/lib/format';
+import { bridgeReady } from '@/lib/bridge';
+import { requireSession } from '@/lib/auth';
 
-export type HasilForm = { error?: string; sukses?: string } | null;
+export type FormState = { error?: string; success?: string } | null;
 
-const PESAN_KONFIGURASI =
-  'Konfigurasi belum lengkap. Pastikan BRIDGE_URL, BRIDGE_TOKEN, dan AUTH_SECRET ' +
-  'sudah diisi di pengaturan Vercel, lalu deploy ulang.';
+const CONFIG_MESSAGE =
+  'Configuration is incomplete. Set BRIDGE_URL, BRIDGE_TOKEN and AUTH_SECRET in ' +
+  'Vercel, then redeploy.';
 
-/** Batas jumlah akun yang gagal login berturut-turut sebelum ditolak sementara. */
-const BATAS_GAGAL = 8;
-const JEDA_KUNCI_MENIT = 5;
+/** Temporary lock-out after repeated failed sign-ins. */
+const MAX_FAILURES = 8;
+const LOCK_MINUTES = 5;
 
 /**
- * Penghitung sederhana di memori untuk meredam percobaan password berulang.
- * Bersifat per-instance Vercel; cukup untuk menghentikan coba-coba asal.
+ * A small in-memory counter to slow down password guessing.
+ * Per Vercel instance; enough to stop casual brute force.
  */
-const catatanGagal = new Map<string, { jumlah: number; sampai: number }>();
+const failures = new Map<string, { count: number; until: number }>();
 
-function sedangTerkunci(kunci: string): number {
-  const c = catatanGagal.get(kunci);
-  if (!c) return 0;
-  if (c.jumlah >= BATAS_GAGAL && Date.now() < c.sampai) {
-    return Math.ceil((c.sampai - Date.now()) / 60000);
+function lockedFor(key: string): number {
+  const entry = failures.get(key);
+  if (!entry) return 0;
+  if (entry.count >= MAX_FAILURES && Date.now() < entry.until) {
+    return Math.ceil((entry.until - Date.now()) / 60000);
   }
-  if (Date.now() >= c.sampai) catatanGagal.delete(kunci);
+  if (Date.now() >= entry.until) failures.delete(key);
   return 0;
 }
 
-function catatGagal(kunci: string) {
-  const c = catatanGagal.get(kunci) ?? { jumlah: 0, sampai: 0 };
-  c.jumlah += 1;
-  c.sampai = Date.now() + JEDA_KUNCI_MENIT * 60000;
-  catatanGagal.set(kunci, c);
+function noteFailure(key: string) {
+  const entry = failures.get(key) ?? { count: 0, until: 0 };
+  entry.count += 1;
+  entry.until = Date.now() + LOCK_MINUTES * 60000;
+  failures.set(key, entry);
 }
 
-function hapusCatatan(kunci: string) {
-  catatanGagal.delete(kunci);
-}
+/* ============================== Sign in ============================== */
 
-export async function masukAction(
-  _sebelumnya: HasilForm,
-  fd: FormData
-): Promise<HasilForm> {
-  if (!jembatanSiap()) return { error: PESAN_KONFIGURASI };
+export async function signInAction(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!bridgeReady()) return { error: CONFIG_MESSAGE };
 
   const username = String(fd.get('username') ?? '').trim();
   const password = String(fd.get('password') ?? '');
 
   if (!username || !password) {
-    return { error: 'Username dan password wajib diisi.' };
+    return { error: 'Username and password are required.' };
   }
 
-  const kunci = username.toLowerCase();
-  const terkunci = sedangTerkunci(kunci);
-  if (terkunci > 0) {
-    return {
-      error: `Terlalu banyak percobaan gagal. Coba lagi dalam ${terkunci} menit.`,
-    };
+  const key = username.toLowerCase();
+  const locked = lockedFor(key);
+  if (locked > 0) {
+    return { error: `Too many failed attempts. Try again in ${locked} minute(s).` };
   }
 
-  let pengguna;
+  let user;
   try {
-    pengguna = (await daftarPengguna()).find((u) => u.username_lower === kunci);
+    user = (await listUsers()).find((u) => u.username_lower === key);
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 
-  // Pesan sengaja disamakan: jangan sampai membocorkan username mana yang ada.
-  if (!pengguna || !verifyPassword(password, pengguna.password_hash)) {
-    catatGagal(kunci);
-    return { error: 'Username atau password salah.' };
+  // Same wording either way, so we never reveal which usernames exist.
+  if (!user || !verifyPassword(password, user.password_hash)) {
+    noteFailure(key);
+    return { error: 'Incorrect username or password.' };
   }
 
-  if (pengguna.status !== 'aktif') {
-    return { error: 'Akun ini sedang dinonaktifkan. Hubungi admin.' };
+  if (user.status !== 'aktif') {
+    return { error: 'This account is deactivated. Please contact your admin.' };
   }
 
-  hapusCatatan(kunci);
+  failures.delete(key);
 
-  const perluGanti = pengguna.must_change_password === 'ya';
+  const mustChange = user.must_change_password === 'ya';
 
   const c = await cookies();
   c.set(
     SESSION_COOKIE,
-    await buatTokenSesi({
-      uid: pengguna.id,
-      username: pengguna.username,
-      role: pengguna.role,
-      mcp: perluGanti,
+    await createSessionToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      mustChangePassword: mustChange,
     }),
-    aturanCookie()
+    sessionCookieOptions()
   );
 
-  // Pencatatan waktu login tidak boleh menggagalkan proses masuk.
+  // Recording the sign-in time must never break the sign-in itself.
   try {
-    await perbaruiPengguna(pengguna.id, { last_login: capWaktu() });
+    await updateUser(user.id, { last_login: nowStamp() });
   } catch {
-    /* diabaikan */
+    /* ignored */
   }
 
-  redirect(perluGanti ? '/ganti-password?paksa=1' : '/');
+  redirect(mustChange ? '/set-password' : '/');
 }
 
-export async function keluarAction(): Promise<void> {
+export async function signOutAction(): Promise<void> {
   const c = await cookies();
   c.delete(SESSION_COOKIE);
   redirect('/login');
 }
 
-export async function gantiPasswordAction(
-  _sebelumnya: HasilForm,
+/* ============================== My account ============================== */
+
+export async function updateProfileAction(
+  _prev: FormState,
   fd: FormData
-): Promise<HasilForm> {
-  const sesi = await wajibSesi();
+): Promise<FormState> {
+  const session = await requireSession();
 
-  const lama = String(fd.get('lama') ?? '');
-  const baru = String(fd.get('baru') ?? '');
-  const ulang = String(fd.get('ulang') ?? '');
+  const full_name = String(fd.get('full_name') ?? '').trim();
+  const phone = String(fd.get('phone') ?? '').trim();
+  const email = String(fd.get('email') ?? '').trim();
 
-  let pengguna;
+  if (!full_name) return { error: 'Full name is required.' };
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: 'That email address does not look right.' };
+  }
+
   try {
-    pengguna = (await daftarPengguna()).find((u) => u.id === sesi.uid);
+    await updateUser(session.userId, { full_name, phone, email });
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 
-  if (!pengguna) return { error: 'Akun tidak ditemukan.' };
-  if (!verifyPassword(lama, pengguna.password_hash)) {
-    return { error: 'Password lama tidak cocok.' };
+  return { success: 'Your details have been saved.' };
+}
+
+export async function changePasswordAction(
+  _prev: FormState,
+  fd: FormData
+): Promise<FormState> {
+  const session = await requireSession();
+
+  const current = String(fd.get('current') ?? '');
+  const next = String(fd.get('next') ?? '');
+  const repeat = String(fd.get('repeat') ?? '');
+
+  let user;
+  try {
+    user = (await listUsers()).find((u) => u.id === session.userId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
   }
-  if (baru.length < PANJANG_MIN_PASSWORD) {
-    return { error: `Password baru minimal ${PANJANG_MIN_PASSWORD} karakter.` };
+
+  if (!user) return { error: 'Account not found.' };
+  if (!verifyPassword(current, user.password_hash)) {
+    return { error: 'Your current password is incorrect.' };
   }
-  if (baru !== ulang) return { error: 'Ulangi password baru belum sama.' };
-  if (baru === lama) return { error: 'Password baru harus berbeda dari password lama.' };
+  if (next.length < MIN_PASSWORD_LENGTH) {
+    return { error: `The new password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  if (next !== repeat) return { error: 'The repeated password does not match.' };
+  if (next === current) {
+    return { error: 'The new password must be different from the current one.' };
+  }
 
   try {
-    await perbaruiPengguna(pengguna.id, {
-      password_hash: hashPassword(baru),
+    await updateUser(user.id, {
+      password_hash: hashPassword(next),
       must_change_password: 'tidak',
     });
   } catch (e) {
@@ -155,66 +180,76 @@ export async function gantiPasswordAction(
   const c = await cookies();
   c.set(
     SESSION_COOKIE,
-    await buatTokenSesi({
-      uid: pengguna.id,
-      username: pengguna.username,
-      role: pengguna.role,
-      mcp: false,
+    await createSessionToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      mustChangePassword: false,
     }),
-    aturanCookie()
+    sessionCookieOptions()
   );
 
-  redirect('/?pesan=password-diganti');
+  return { success: 'Your password has been changed.' };
 }
 
-export async function buatAdminPertamaAction(
-  _sebelumnya: HasilForm,
+/* ====================== First run / lock-out recovery ====================== */
+
+/**
+ * Only reachable while the `users` tab is completely empty, so it can never be
+ * used while a real account exists. It exists purely so an empty spreadsheet
+ * is not a dead end.
+ */
+export async function createFirstAdminAction(
+  _prev: FormState,
   fd: FormData
-): Promise<HasilForm> {
-  if (!jembatanSiap()) return { error: PESAN_KONFIGURASI };
+): Promise<FormState> {
+  if (!bridgeReady()) return { error: CONFIG_MESSAGE };
 
   const username = String(fd.get('username') ?? '').trim().toLowerCase();
+  const full_name = String(fd.get('full_name') ?? '').trim();
   const password = String(fd.get('password') ?? '');
-  const ulang = String(fd.get('ulang') ?? '');
+  const repeat = String(fd.get('repeat') ?? '');
 
   if (!/^[a-z0-9][a-z0-9._-]{2,19}$/.test(username)) {
     return {
       error:
-        'Username harus 3–20 karakter, huruf kecil/angka/titik/garis bawah, dan diawali huruf atau angka.',
+        'Username must be 3–20 characters, lowercase letters, digits, dot, dash or underscore.',
     };
   }
-  if (password.length < PANJANG_MIN_PASSWORD) {
-    return { error: `Password minimal ${PANJANG_MIN_PASSWORD} karakter.` };
+  if (!full_name) return { error: 'Full name is required.' };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
   }
-  if (password !== ulang) return { error: 'Ulangi password belum sama.' };
+  if (password !== repeat) return { error: 'The repeated password does not match.' };
 
-  let jumlah;
+  let count;
   try {
-    jumlah = (await daftarPengguna()).length;
+    count = (await listUsers()).length;
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 
-  if (jumlah > 0) {
-    return {
-      error: 'Admin pertama sudah pernah dibuat. Halaman ini tidak bisa dipakai lagi.',
-    };
+  if (count > 0) {
+    return { error: 'An account already exists, so this page can no longer be used.' };
   }
 
   try {
-    await simpanPenggunaBaru({
+    await createUser({
       username,
       username_lower: username,
       password_hash: hashPassword(password),
+      full_name,
+      phone: '',
+      email: '',
       role: 'admin',
       status: 'aktif',
       must_change_password: 'tidak',
-      created_at: capWaktu(),
+      created_at: nowStamp(),
       last_login: '',
     });
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 
-  redirect('/login?pesan=admin-dibuat');
+  redirect('/login?msg=created');
 }

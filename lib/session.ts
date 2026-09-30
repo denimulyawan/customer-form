@@ -1,61 +1,59 @@
 import { SignJWT, jwtVerify } from 'jose';
 import type { Role } from './types';
 
-/** Nama cookie penanda sesi login. */
-export const SESSION_COOKIE = 'cf_sesi';
+/** Name of the cookie that carries the signed-in session. */
+export const SESSION_COOKIE = 'cf_session';
 
-const MASA_BERLAKU_JAM = 8;
+const TTL_HOURS = 8;
 
-export const MASA_BERLAKU_DETIK = MASA_BERLAKU_JAM * 3600;
+export const SESSION_TTL_SECONDS = TTL_HOURS * 3600;
 
-export type Sesi = {
-  /** id user di tab `users`. */
-  uid: string;
+export type Session = {
+  /** id of the row in the `users` tab. */
+  userId: string;
   username: string;
   role: Role;
-  /** true = wajib ganti password sebelum bisa memakai aplikasi. */
-  mcp: boolean;
+  /** true = must change the password before using anything else. */
+  mustChangePassword: boolean;
 };
 
-function kunci(): Uint8Array {
+function secret(): Uint8Array {
   const s = process.env.AUTH_SECRET;
   if (!s || s.length < 16) {
-    throw new Error(
-      'AUTH_SECRET belum di-set atau terlalu pendek (minimal 16 karakter).'
-    );
+    throw new Error('AUTH_SECRET is missing or too short (16 characters minimum).');
   }
   return new TextEncoder().encode(s);
 }
 
-export async function buatTokenSesi(sesi: Sesi): Promise<string> {
-  return new SignJWT({ ...sesi })
+export async function createSessionToken(session: Session): Promise<string> {
+  return new SignJWT({ ...session })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(`${MASA_BERLAKU_JAM}h`)
-    .sign(kunci());
+    .setExpirationTime(`${TTL_HOURS}h`)
+    .sign(secret());
 }
 
-export async function bacaTokenSesi(token: string): Promise<Sesi | null> {
+export async function readSessionToken(token: string): Promise<Session | null> {
   try {
-    const { payload } = await jwtVerify(token, kunci());
-    if (typeof payload.uid !== 'string' || !payload.uid) return null;
+    const { payload } = await jwtVerify(token, secret());
+    if (typeof payload.userId !== 'string' || !payload.userId) return null;
     return {
-      uid: payload.uid,
+      userId: payload.userId,
       username: String(payload.username ?? ''),
       role: payload.role === 'admin' ? 'admin' : 'operator',
-      mcp: payload.mcp === true,
+      mustChangePassword: payload.mustChangePassword === true,
     };
   } catch {
     return null;
   }
 }
 
-export function aturanCookie() {
+export function sessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: MASA_BERLAKU_DETIK,
+    maxAge: SESSION_TTL_SECONDS,
   };
 }

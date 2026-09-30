@@ -1,327 +1,335 @@
 # Panduan Pemasangan
 
-Panduan ini ditulis untuk diikuti dari atas ke bawah. Perkiraan waktu: **25–35 menit**,
-sekali saja.
+Panduan ini ditulis untuk diikuti dari atas ke bawah. Sekali saja, sekitar
+25–35 menit.
 
-Yang perlu disiapkan:
-
-- Akun Google (Gmail biasa, tidak perlu Google Workspace)
-- Akun GitHub — gratis
-- Akun Vercel — gratis, daftar pakai akun GitHub
-- Node.js di komputer *(hanya kalau mau mencoba dulu di komputer sendiri)*
+**Aplikasinya berbahasa Inggris**, karena itu semua tulisan di layar akan
+berbahasa Inggris. Panduan ini tetap berbahasa Indonesia.
 
 ---
 
-## Bagian 1 — Menyiapkan Google Spreadsheet (10 menit)
+## Gambaran besar
 
-### 1.1 Buat spreadsheet baru
+```
+Tim isi formulir  ->  Vercel (aplikasi)  ->  Apps Script (juru tulis)  ->  Google Spreadsheet
+```
 
-1. Buka <https://sheets.new>
-2. Ganti namanya menjadi **Database Akun Pelanggan** (klik "Untitled spreadsheet" di kiri atas)
+| Bagian | Perannya |
+|---|---|
+| Google Spreadsheet | Tempat data disimpan — dua tab: `customers` dan `users` |
+| Google Apps Script | Juru tulis di dalam spreadsheet |
+| GitHub | Tempat kodenya |
+| Vercel | Yang menjalankan aplikasinya |
 
-Jangan bagikan spreadsheet ini ke siapa pun. Cukup kamu yang bisa membukanya.
+Yang perlu disiapkan: akun Google, akun GitHub, akun Vercel. Semuanya gratis.
+
+---
+
+## Bagian 1 — Spreadsheet dan Apps Script (10 menit)
+
+### 1.1 Siapkan spreadsheet
+
+Buat satu spreadsheet baru, beri nama apa saja. Jangan dibagikan ke siapa pun —
+cukup kamu yang bisa membukanya.
 
 ### 1.2 Buka editor Apps Script
 
-Di spreadsheet, klik menu **Extensions** → **Apps Script**.
+Di spreadsheet: menu **Extensions** → **Apps Script**. Tab baru akan terbuka
+menampilkan file `Code.gs` yang isinya contoh kosong. Hapus semua isinya.
 
-Tab baru akan terbuka menampilkan file `Code.gs` yang isinya kira-kira begini:
+### 1.3 Tempel kodenya
 
-```javascript
-function myFunction() {
-}
-```
+Ambil isi file `apps-script/Code.gs` dari repo ini, lalu tempel seluruhnya ke
+kotak kode tadi.
 
-Hapus semua isinya.
+> **Penting:** kalau kamu memakai berkas siap tempel yang disiapkan admin
+> (`SIAP-TEMPEL-AppsScript.gs`), pakai yang itu — di dalamnya token sudah terisi.
+> Jangan pakai yang dari GitHub, karena tokennya masih tulisan contoh.
 
-### 1.3 Tempel skrip jembatan
+### 1.4 Ganti token
 
-1. Buka file `apps-script/Code.gs` dari repo ini
-2. Salin **seluruh** isinya
-3. Tempel ke editor Apps Script yang sudah dikosongkan tadi
-
-### 1.4 Ganti token rahasia
-
-Di baris paling atas kode, cari baris ini:
+Cari baris ini di bagian atas:
 
 ```javascript
 var TOKEN = 'GANTI_DENGAN_TOKEN_RAHASIA_KARANGANMU';
 ```
 
-Ganti bagian di dalam tanda kutip dengan kata sandi karanganmu sendiri. Contoh:
+Ganti jadi kata sandi karanganmu sendiri, contoh:
 
 ```javascript
-var TOKEN = 'kunci-rahasia-akun-2026-x7k9';
+var TOKEN = 'kunci-akun-2026-x7k9';
 ```
 
-> Buat yang sulit ditebak dan **catat**, karena nanti harus ditulis sama persis di Vercel.
-> Jangan pakai spasi.
+**Catat token ini.** Nanti dipakai di Vercel sebagai `BRIDGE_TOKEN`, dan harus
+sama persis.
+
+> Tulisan contoh itu terpampang di repo publik. Kalau tidak diganti, siapa pun
+> yang menemukan URL spreadsheet-mu bisa membaca dan mengubah datanya.
 
 ### 1.5 Simpan, lalu jalankan setup
 
-1. Klik ikon **Save** (disket) atau tekan `Ctrl+S`
-2. Di daftar fungsi di atas editor, ganti `myFunction` menjadi `setup`
-3. Klik **Run**
-4. Google akan meminta izin. Klik **Review permissions** → pilih akunmu →
-   klik **Advanced** → **Go to (nama project) (unsafe)** → **Allow**
+1. **Ctrl+S**
+2. Di dropdown fungsi di atas kotak kode, pilih **`setup`**
+3. Klik **Run** ▶
+4. Google minta izin: **Review permissions** → pilih akunmu → **Advanced** →
+   **Go to (nama project) (unsafe)** → **Allow**
 
-   > Peringatan "unsafe" itu normal untuk skrip buatan sendiri yang belum
-   > diverifikasi Google. Skrip ini hanya menyentuh spreadsheet ini sendiri.
+   Peringatan "unsafe" itu normal untuk skrip buatan sendiri yang belum
+   diverifikasi Google. Skrip ini hanya menyentuh spreadsheet ini sendiri.
 
-5. Buka tab spreadsheet-nya lagi. Sekarang harusnya ada dua tab baru: **akun** dan
-   **users**, masing-masing sudah ada baris judulnya.
+5. Buka lagi tab spreadsheet-nya. Sekarang ada dua tab baru: **`customers`** dan
+   **`users`**, masing-masing sudah ada baris judulnya.
 
-Kalau tab `Sheet1` masih ada dan kosong, hapus manual saja.
+Kalau kamu memperbarui dari versi lama, tab `akun` akan otomatis diganti nama
+menjadi **`old_akun_archive`** (datanya tidak dihapus, tapi tidak dipakai lagi).
+Boleh kamu hapus sendiri kalau sudah tidak diperlukan.
 
 ### 1.6 Deploy jadi Web App
 
-Kembali ke tab Apps Script:
-
-1. Klik **Deploy** → **New deployment**
-2. Klik ikon gerigi di sebelah "Select type" → pilih **Web app**
+1. **Deploy** → **New deployment**
+2. Klik **ikon gerigi** ⚙ di sebelah "Select type" → pilih **Web app**
 3. Isi:
-   - **Description**: `jembatan customer-form`
+   - **Description**: bebas
    - **Execute as**: `Me (email kamu)`
    - **Who has access**: **`Anyone`**
 4. Klik **Deploy**
-5. Salin **Web app URL** yang muncul
+5. **Salin Web app URL** yang muncul (berakhiran `/exec`)
 
-URL-nya panjang dan berakhiran `/exec`, contohnya:
+Cek cepat: tempel URL itu di browser. Yang benar akan menampilkan tulisan:
 
+```json
+{"ok":true,"data":{"pesan":"Bridge is alive. Send commands with POST, not GET."}}
 ```
-https://script.google.com/macros/s/AKfycbxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/exec
-```
 
-> **Penting:** pilihannya harus **Anyone**, bukan "Anyone with Google account".
-> Aplikasi di Vercel mengaksesnya dari server, bukan dari browser, jadi tidak punya
-> identitas Google. Yang menjaga keamanan adalah token rahasia di langkah 1.4.
-
-**Cek koneksi:** tempel URL itu di browser. Kalau muncul tulisan
-`{"ok":true,"data":{"pesan":"Jembatan aktif. Kirim perintah lewat POST, bukan GET."}}`,
-berarti sudah benar.
+Kalau yang muncul halaman error atau halaman login Google, ulangi langkah 3 —
+pilihan aksesnya harus **Anyone**, bukan "Anyone with Google account".
 
 ### 1.7 Kalau nanti mengubah Code.gs
 
-Setiap kali kamu mengubah isi `Code.gs` (misalnya menambah kolom), perubahan itu
-**tidak langsung berlaku**. Kamu harus:
+Perubahan kode **tidak langsung berlaku**. Kamu harus menerbitkan ulang:
 
-1. Klik **Deploy** → **Manage deployments**
-2. Klik ikon pensil pada deployment yang aktif
-3. Di bagian **Version**, pilih **New version**
-4. Klik **Deploy**
-
-URL-nya tetap sama, tidak perlu diubah di Vercel.
+- **Cara paling gampang:** **Deploy** → **New deployment** → ulangi langkah 1.6.
+  URL-nya akan berubah, jadi jangan lupa perbarui `BRIDGE_URL` di Vercel.
+- **Cara mempertahankan URL lama:** **Deploy** → **Manage deployments** → klik
+  ikon pensil pada deployment yang aktif → bagian **Version** pilih
+  **New version** → **Deploy**.
 
 ---
 
-## Bagian 2 — Menaruh kode di GitHub (5 menit)
+## Bagian 2 — Kode di GitHub (5 menit)
 
-Repo `customer-form` sudah ada. Kalau perlu memperbarui isinya, dua cara:
-
-**Cara A — unggah lewat halaman GitHub**
-
-1. Buka repo di GitHub, klik **Add file** → **Upload files**
-2. Seret semua file dan folder dari folder `customer-form` di komputermu
-   (kecuali `node_modules` dan `.next` — keduanya tidak perlu)
-3. Tulis pesan commit, klik **Commit changes**
-
-**Cara B — lewat Git di komputer**
+Repo `customer-form` sudah ada. Kalau perlu memperbaruinya, unggah lewat halaman
+GitHub (**Add file** → **Upload files**), atau lewat Git:
 
 ```bash
 cd customer-form
-git init
 git add .
-git commit -m "customer-form: aplikasi pencatatan akun pelanggan"
-git branch -M main
-git remote add origin https://github.com/denimulyawan/customer-form.git
-git push -u origin main
+git commit -m "perbarui aplikasi"
+git push
 ```
+
+Jangan pernah mengunggah `.env.local` — file itu sudah diblokir `.gitignore`.
 
 ---
 
-## Bagian 3 — Memasang di Vercel (10 menit)
+## Bagian 3 — Vercel (10 menit)
 
-### 3.1 Daftar / masuk
+1. Buka <https://vercel.com> → **Add New…** → **Project**
+2. Pilih repo **customer-form** → **Import**
+3. ⚠️ **Jangan klik Deploy dulu.** Buka **Environment Variables** dan isi tiga
+   nilai berikut:
 
-1. Buka <https://vercel.com>
-2. Klik **Sign Up** → **Continue with GitHub** → izinkan
-3. Kalau diminta memilih paket, pilih **Hobby** (gratis)
+| Key | Value |
+|---|---|
+| `AUTH_SECRET` | kunci acak, lihat cara membuatnya di bawah |
+| `BRIDGE_URL` | Web app URL dari langkah 1.6 (akhiran `/exec`) |
+| `BRIDGE_TOKEN` | token dari langkah 1.4, harus sama persis |
 
-### 3.2 Import repo
+Untuk **Environment**, biarkan pilihan bawaan (Production + Preview +
+Development).
 
-1. Di dashboard Vercel, klik **Add New…** → **Project**
-2. Cari repo **customer-form** → klik **Import**
-3. Di bagian **Framework Preset**, biarkan **Next.js** (Vercel sudah mendeteksi
-   sendiri)
-4. **Jangan klik Deploy dulu** — isi dulu nilai rahasianya di langkah berikut
-
-### 3.3 Isi tiga nilai rahasia
-
-Di halaman yang sama, buka bagian **Environment Variables**, lalu tambahkan tiga
-variabel berikut satu per satu.
-
-**a. `AUTH_SECRET`** — kunci acak untuk menandatangani sesi login.
-
-Buat nilainya dengan perintah ini di komputer (butuh Node.js):
+**Membuat `AUTH_SECRET`** — jalankan di komputer (butuh Node.js):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-Hasilnya berupa deretan huruf dan angka, contoh:
-`kR7mQ2xP9vL4nB8sT1wY6zA3cD5eF0gH2jK4mN7pQ1r`
+Kalau Vercel menyediakan kolom untuk menempel isi berkas `.env` sekaligus,
+tempel seluruh isi `.env.local` — akan terisi otomatis.
 
-Salin hasilnya sebagai nilai `AUTH_SECRET`.
+4. **Framework Preset**: `Next.js` (terdeteksi otomatis). **Root Directory**:
+   biarkan kosong.
+5. Klik **Deploy**, tunggu 1–3 menit.
 
-> Tidak punya Node.js? Ketik saja kalimat acak yang panjang, minimal 32 karakter,
-> campur huruf besar, huruf kecil, dan angka.
+### Kalau terlanjur Deploy sebelum mengisi nilainya
 
-**b. `BRIDGE_URL`** — alamat Web App dari langkah 1.6 (yang berakhiran `/exec`).
+Tidak masalah, tidak perlu dihapus:
 
-**c. `BRIDGE_TOKEN`** — token rahasia dari langkah 1.4. **Harus sama persis.**
-
-Untuk setiap variabel: isi **Key** dan **Value**, sisakan **Environment** ke pilihan
-default (Production, Preview, Development), lalu klik **Save**.
-
-### 3.4 Deploy
-
-1. Klik **Deploy**
-2. Tunggu 1–3 menit sampai muncul layar perayaan "Congratulations"
-3. Klik **Continue to Dashboard**, lalu klik **Visit** untuk membuka aplikasinya
+1. Buka project → **Settings** → **Environment Variables**, isi ketiganya
+2. Buka **Deployments** → pada deployment teratas klik **⋯** → **Redeploy**
 
 ---
 
-## Bagian 4 — Pemakaian pertama (5 menit)
+## Bagian 4 — Masuk pertama kali (5 menit)
 
-### 4.1 Buat admin pertama
+### Kalau spreadsheet masih kosong
 
-Saat aplikasi dibuka pertama kali dan spreadsheet-nya belum punya akun login, kamu
-otomatis diarahkan ke halaman **Buat admin pertama**.
+Buka alamat situsmu. Halaman masuk akan menampilkan catatan bahwa belum ada akun,
+beserta tautan **Create the first admin**. Klik tautan itu, isi username, nama
+lengkap, dan password.
 
-1. Isi username (contoh: `deni`), password, dan ulangi passwordnya
-2. Klik **Buat admin & mulai**
-3. Halaman itu akan langsung mati sendiri setelah admin pertama dibuat
+Halaman itu hanya hidup selama tab `users` benar-benar kosong. Begitu satu akun
+ada, halaman itu mati sendiri dan tidak akan muncul lagi.
 
-### 4.2 Masuk
+### Kalau akunnya sudah dibuatkan admin
 
-Masukkan username dan password tadi. Kamu akan mendarat di **Dashboard**.
+Langsung masuk pakai username dan password yang diberikan. Kalau itu password
+pemberian admin, aplikasi akan **memaksa kamu menggantinya dulu** di halaman
+tersendiri sebelum bisa memakai apa pun.
 
-### 4.3 Tambahkan anggota tim
+### Halaman yang tersedia
 
-1. Klik menu **Pengguna** di sidebar kiri
-2. Isi **Username login**, pilih **Peran**:
-   - **Operator** — hanya bisa melihat, menambah, mengubah, menghapus data akun
-   - **Admin** — semuanya, termasuk membuat & menonaktifkan akun login
-3. Isi **Password awal** (minimal 8 karakter), klik **Buat akun**
-4. Sampaikan username dan password awal itu ke yang bersangkutan
-
-Saat orang itu login pertama kali, aplikasi akan memaksanya mengganti password
-sebelum bisa memakai apa pun.
-
-### 4.4 Mulai mengisi data
-
-Klik **+ Tambah Akun**, isi kolomnya, klik **Simpan**. Tanggal terisi otomatis dengan
-tanggal hari ini dan bisa diubah kalau kamu sedang memasukkan data lama.
-
-### 4.5 Mengubah & menghapus
-
-- **Mengubah**: buka **Daftar Akun**, klik **Edit** pada baris yang dituju
-- **Menghapus**: klik **Hapus**, lalu konfirmasi. Data **hilang permanen** dari
-  spreadsheet dan tidak bisa dikembalikan.
-
-### 4.6 Export ke Excel
-
-Di halaman **Daftar Akun**, klik **⤓ Export Excel**. Yang terunduh adalah data sesuai
-filter yang sedang aktif — kalau kamu menyaring PIC tertentu, hanya data PIC itu yang
-ikut terunduh.
+| Menu | Untuk siapa | Isinya |
+|---|---|---|
+| **Dashboard** | semua | Angka ringkasan + dua grafik |
+| **Customer List** | semua | Daftar akun pelanggan, pencarian, filter, edit, hapus, export Excel |
+| **User Management** | admin | Buat pengguna, setel ulang password, aktif/nonaktif |
+| **My Account** | semua | Nama, telepon, email sendiri + ganti password |
 
 ---
 
-## Bagian 5 — Mencoba di komputer sendiri (opsional)
+## Bagian 5 — Kalau memperbarui dari versi lama
 
-Berguna kalau mau mengubah tampilan dan ingin melihat hasilnya lebih cepat.
+Versi lama memakai tab `akun` dengan kolom yang berbeda (nama pelanggan,
+email SolarWinds, email Duo). Urutan memperbaruinya:
+
+1. **Di spreadsheet**, tempel ulang `Code.gs` yang baru (atau berkas siap tempel
+   yang diberikan admin), lalu **Ctrl+S**
+2. Jalankan fungsi **`setup`** sekali lagi. Ini akan:
+   - membuat tab `customers` yang baru
+   - menambahkan kolom `full_name`, `phone`, `email` ke tab `users`
+     (kolom lamanya tidak diubah, jadi akun yang sudah ada tetap aman)
+   - mengganti nama tab `akun` menjadi `old_akun_archive`
+3. **Deploy → New deployment** dan salin URL barunya
+4. Di Vercel: perbarui `BRIDGE_URL` dengan URL baru → **Deployments** →
+   **Redeploy**
+5. Masuk seperti biasa. Data pelanggan lama ada di tab `old_akun_archive` dan
+   perlu dimasukkan ulang lewat aplikasi kalau masih diperlukan.
+
+---
+
+## Bagian 6 — Pemakaian sehari-hari
+
+### Menambah akun pelanggan
+
+**Customer List** → **+ Add Account**. Isi nama perusahaan, CID, username akun,
+pilih Account Manager, dan isi data PIC kalau ada.
+
+Tanggal dicatat otomatis oleh aplikasi dan **tidak ditampilkan di tabel** — tapi
+ikut terunduh di file Excel, dan dipakai untuk grafik "Accounts Added per Month".
+
+Username akun pelanggan **boleh kembar** — tidak ada pemeriksaan keunikan.
+
+### Account Manager
+
+Account Manager dipilih dari daftar pengguna aplikasi, bukan diketik bebas.
+Jadi kalau nomor telepon atau email seseorang berubah:
+
+1. **User Management** (kalau admin) atau **My Account** untuk mengubah datanya
+2. Semua catatan pelanggan miliknya otomatis menampilkan data terbaru
+
+Supaya nama orang muncul (bukan sekadar username), isi kolom **Full name** di
+**My Account**.
+
+### Export Excel
+
+Di **Customer List**, klik **⤓ Export Excel**. Yang terunduh adalah data sesuai
+filter yang sedang aktif.
+
+### Lupa password
+
+Tidak ada tombol "lupa password" yang mengirim email — memang tidak ada layanan
+email yang dipasang. Alurnya: minta admin membuka **User Management** → **Reset
+password** pada baris akunmu. Kamu akan diminta menggantinya saat masuk.
+
+---
+
+## Bagian 7 — Mencoba di komputer sendiri (opsional)
 
 ```bash
 cd customer-form
 npm install
 cp .env.example .env.local
-```
-
-Buka `.env.local` dan isi ketiga nilainya (sama seperti di Vercel), lalu:
-
-```bash
+# isi ketiga nilainya
 npm run dev
 ```
 
-Buka <http://localhost:3000>. Data yang kamu lihat adalah data asli dari spreadsheet,
+Buka <http://localhost:3000>. Yang kamu lihat adalah data asli dari spreadsheet,
 jadi hati-hati saat menambah atau menghapus.
 
 ---
 
-## Bagian 6 — Perawatan
+## Bagian 8 — Perawatan
 
 ### Menambah kolom baru
 
-Misalnya mau menambah kolom "Keterangan":
+Misalnya menambah kolom "Notes":
 
-1. Di `apps-script/Code.gs`, tambahkan `'keterangan'` di akhir daftar kolom `akun`
-2. Deploy ulang versi baru (lihat 1.7)
-3. Di spreadsheet, tambahkan judul kolomnya di tab `akun`
-4. Di `lib/types.ts`, tambahkan `keterangan: string` pada tipe `Akun` dan
-   `LABEL_AKUN`
-5. Di `components/FormAkun.tsx`, tambahkan kolom isiannya
-6. Push ke GitHub — Vercel akan deploy sendiri
+1. Di `apps-script/Code.gs`, tambahkan `'notes'` di akhir daftar kolom
+   `customers`. **Tambahkan di akhir**, jangan di tengah, supaya data lama tidak
+   bergeser.
+2. Deploy ulang (lihat 1.7), lalu jalankan `setup` lagi
+3. Di `lib/types.ts`, tambahkan `notes: string` pada tipe `Customer`
+4. Di `components/CustomerForm.tsx`, tambahkan kolom isiannya
+5. Push ke GitHub — Vercel deploy sendiri
 
-### Tentang keamanan
+### Keamanan
 
 | Hal | Keadaan |
 |---|---|
-| Password user | Hanya tersimpan sebagai hash. **Tidak ada yang bisa melihatnya, termasuk kamu.** Lupa password = admin harus menyetel ulang |
-| Sesi login | Berlaku 8 jam, lalu minta login lagi |
-| Akun dinonaktifkan | Langsung tidak bisa menyimpan apa pun. Halaman masih bisa dibuka sampai sesinya habis (maksimal 8 jam) |
+| Password pengguna | Hanya tersimpan sebagai hash scrypt. **Tidak ada yang bisa melihatnya, termasuk admin.** Lupa = harus disetel ulang |
+| Sesi masuk | Berlaku 8 jam, lalu diminta masuk lagi |
+| Akun dinonaktifkan | Langsung tidak bisa menyimpan apa pun |
 | Salah password berulang | Dikunci sementara setelah 8 kali gagal |
-| Token GitHub | **Hapus token yang pernah kamu kirim lewat chat** di <https://github.com/settings/tokens> |
+| Token GitHub | Hapus setelah dipakai, di <https://github.com/settings/tokens> |
 
 ### Batas yang perlu diketahui
 
-Aplikasi ini memakai Google Sheets sebagai database. Batasnya:
-
-- **Kuota Google:** sekitar 60 permintaan per menit per akun. Untuk tim kecil, tidak
-  akan pernah tersentuh.
+- **Kuota Google:** sekitar 60 permintaan per menit per akun. Untuk tim kecil,
+  tidak akan tersentuh.
 - **Kecepatan:** setiap halaman butuh 0,5–1,5 detik karena harus menanyakan ke
-  spreadsheet. Halaman menampilkan indikator "Memuat data" selama menunggu.
+  spreadsheet. Halaman menampilkan indikator "Loading" selama menunggu.
 - **Jumlah data:** nyaman sampai beberapa ribu baris. Kalau sudah puluhan ribu,
-  saatnya pindah ke database sungguhan (Supabase/Postgres) — struktur kodenya sudah
-  dipisah di folder `lib/` supaya mudah diganti.
+  saatnya pindah ke database sungguhan — struktur kodenya sudah dipisah di folder
+  `lib/` supaya mudah diganti.
 
 ---
 
-## Bagian 7 — Kalau ada masalah
+## Bagian 9 — Kalau ada masalah
 
 | Gejala | Penyebab & solusi |
 |---|---|
-| Muncul tulisan **"Konfigurasi belum lengkap"** | Salah satu dari tiga nilai rahasia belum terisi di Vercel. Isi, lalu **Redeploy** |
-| **"Jawaban dari jembatan tidak bisa dibaca"** | Web App Apps Script tidak di-set **Anyone**, atau URL-nya bukan yang berakhiran `/exec` |
-| **"Token tidak cocok"** | Nilai `BRIDGE_TOKEN` di Vercel berbeda dengan `TOKEN` di `Code.gs`. Samakan, lalu deploy ulang Apps Script **dan** redeploy Vercel |
-| **"Tab akun belum ada"** | Fungsi `setup` belum dijalankan. Lihat 1.5 |
-| **"Tidak bisa menghubungi jembatan spreadsheet"** | `BRIDGE_URL` salah ketik. Tempel ulang dari Apps Script |
-| Tanggal di spreadsheet berubah jadi aneh | Jalankan fungsi `setup` sekali lagi — dia mengatur ulang semua kolom jadi format teks |
-| Sudah ubah `Code.gs` tapi tidak ada efek | Deploy versi baru, lihat 1.7 |
-| Halaman putih / error 500 | Buka Vercel → **Deployments** → klik deployment terakhir → **Functions** untuk melihat pesan errornya |
-| Lupa password, dan tidak ada admin lain yang bisa mereset | Lihat bagian di bawah tabel ini |
+| **"Configuration is incomplete"** | Salah satu dari tiga nilai belum terisi di Vercel. Isi, lalu **Redeploy** |
+| **"The bridge returned something unreadable"** | Web App Apps Script tidak di-set **Anyone**, atau URL-nya bukan yang berakhiran `/exec` |
+| **"Token mismatch"** | `BRIDGE_TOKEN` di Vercel berbeda dengan `TOKEN` di `Code.gs`. Samakan, deploy ulang Apps Script, lalu redeploy Vercel |
+| **"Tab customers does not exist yet"** | Fungsi `setup` belum dijalankan. Lihat 1.5 |
+| **"Could not reach the spreadsheet bridge"** | `BRIDGE_URL` salah ketik, atau URL lama yang sudah tidak aktif |
+| Tanggal di spreadsheet berubah jadi aneh | Jalankan `setup` sekali lagi — dia mengatur ulang semua kolom jadi format teks |
+| Sudah ubah `Code.gs` tapi tidak ada efek | Terbitkan versi baru, lihat 1.7 |
+| Terjebak di halaman "Choose your own password" | Kamu memang wajib menggantinya dulu. Isi password pemberian admin di kolom pertama, lalu password barumu |
+| Halaman putih / error 500 | Vercel → **Deployments** → deployment terakhir → **Functions** untuk melihat pesan errornya |
 
 ### Kalau admin terakhir lupa passwordnya
 
-Kalau masih ada admin lain yang aktif, minta dia menyetel ulang passwordmu lewat menu
-**Pengguna** — selesai.
+Kalau masih ada admin lain yang aktif, minta dia menyetel ulang lewat **User
+Management**.
 
-Kalau tidak ada admin lain sama sekali, terpaksa dibuat ulang:
+Kalau tidak ada admin lain sama sekali:
 
 1. Buka spreadsheet → tab **`users`**
 2. Hapus **seluruh baris** di tab itu (baris judul di baris 1 jangan dihapus)
-3. Buka aplikasi → buka alamat `/setup` di belakangnya
-   (contoh: `https://customer-form-xxxx.vercel.app/setup`)
+3. Buka `…/setup` di situsmu (contoh: `https://customer-form-xxxx.vercel.app/setup`)
 4. Buat admin baru dari nol
 
-> Konsekuensinya semua anggota tim harus dibuatkan akun login baru, karena daftar
-> akun login ikut terhapus. Data pelanggan di tab `akun` **tidak** terpengaruh.
+Semua anggota tim harus dibuatkan akun login baru. Data pelanggan di tab
+`customers` **tidak** terpengaruh.

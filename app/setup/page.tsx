@@ -1,51 +1,56 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { FormSetup } from '@/components/FormAkunAuth';
-import { jembatanSiap } from '@/lib/bridge';
-import { daftarPengguna } from '@/lib/data';
+import { FirstAdminForm } from '@/components/AccountForms';
+import { bridgeReady } from '@/lib/bridge';
+import { listUsers } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HalamanSetup() {
-  const siap = jembatanSiap();
+/**
+ * Only reachable while the `users` tab is empty. It exists so that a fresh
+ * spreadsheet is not a dead end — it is never shown once a real account
+ * exists, and it can never create a second first admin.
+ */
+export default async function SetupPage() {
+  const ready = bridgeReady();
 
-  if (!siap) {
+  if (!ready) {
     return (
-      <div className="layar-penuh">
-        <div className="kotak-lebar">
+      <div className="fullscreen">
+        <div className="wide-box">
           <div className="card">
             <div className="card-head">
               <div>
-                <h2>Konfigurasi belum lengkap</h2>
-                <p>Tiga nilai rahasia belum terpasang di Vercel.</p>
+                <h2>Configuration is incomplete</h2>
+                <p>The three secrets are not set in Vercel yet.</p>
               </div>
             </div>
             <div className="card-body">
-              <ol className="langkah">
+              <ol className="steps">
                 <li>
-                  Jalankan perintah ini di komputer untuk membuat{' '}
+                  Run this on your computer to create{' '}
                   <span className="mono">AUTH_SECRET</span>:
-                  <div className="kode">
+                  <div className="code-block">
                     node -e &quot;console.log(require(&apos;crypto&apos;).randomBytes(32).toString(&apos;base64url&apos;))&quot;
                   </div>
                 </li>
                 <li>
-                  Buka Vercel → project ini → <strong>Settings</strong> →{' '}
+                  Open Vercel → this project → <strong>Settings</strong> →{' '}
                   <strong>Environment Variables</strong>.
                 </li>
                 <li>
-                  Isi tiga variabel: <span className="mono">AUTH_SECRET</span>,{' '}
-                  <span className="mono">BRIDGE_URL</span>, dan{' '}
+                  Add <span className="mono">AUTH_SECRET</span>,{' '}
+                  <span className="mono">BRIDGE_URL</span> and{' '}
                   <span className="mono">BRIDGE_TOKEN</span>.
                 </li>
                 <li>
-                  Buka tab <strong>Deployments</strong>, klik <strong>Redeploy</strong>{' '}
-                  supaya nilai barunya terbaca.
+                  Go to the <strong>Deployments</strong> tab and click{' '}
+                  <strong>Redeploy</strong> so the new values are picked up.
                 </li>
-                <li>Muat ulang halaman ini.</li>
+                <li>Reload this page.</li>
               </ol>
-              <p className="teks-kecil">
-                Panduan lengkap dari awal: <span className="mono">docs/PANDUAN.md</span>
+              <p className="text-small">
+                Full walkthrough: <span className="mono">docs/PANDUAN.md</span>
               </p>
             </div>
           </div>
@@ -54,48 +59,48 @@ export default async function HalamanSetup() {
     );
   }
 
-  let galat: string | null = null;
-  let jumlah = 0;
+  let error: string | null = null;
+  let count = 0;
 
   try {
-    jumlah = (await daftarPengguna()).length;
+    count = (await listUsers()).length;
   } catch (e) {
-    galat = e instanceof Error ? e.message : String(e);
+    error = e instanceof Error ? e.message : String(e);
   }
 
-  if (!galat && jumlah > 0) redirect('/login');
+  if (!error && count > 0) redirect('/login');
 
   return (
-    <div className="pusat">
-      <div className="pusat-kartu">
+    <div className="centered">
+      <div className="centered-card">
         <div className="brand">
           <span className="brand-mark">MA</span>
           <div className="brand-text">
-            <strong>Manajemen Akun Pelanggan</strong>
-            <small>Langkah pertama</small>
+            <strong>Account Manager</strong>
+            <small>First run</small>
           </div>
         </div>
 
-        <h1>Buat admin pertama</h1>
+        <h1>Create the first admin</h1>
         <p className="sub">
-          Belum ada satu pun akun login di spreadsheet. Buat akun admin pertamamu di
-          sini. Halaman ini otomatis mati setelah admin pertama dibuat.
+          The spreadsheet has no sign-in account at all. This page creates one and then
+          switches itself off for good.
         </p>
 
-        {galat ? (
+        {error ? (
           <div className="alert alert-error">
             <span>!</span>
             <div>
-              <strong>Tidak bisa membaca spreadsheet</strong>
-              {galat}
+              <strong>Could not read the spreadsheet</strong>
+              {error}
             </div>
           </div>
         ) : null}
 
-        <FormSetup />
+        <FirstAdminForm />
 
-        <div className="pusat-kaki">
-          Sudah punya akun? <Link href="/login">Masuk di sini</Link>
+        <div className="centered-foot">
+          Already have an account? <Link href="/login">Sign in</Link>
         </div>
       </div>
     </div>

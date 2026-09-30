@@ -1,20 +1,35 @@
+/**
+ * Data shapes shared across the app.
+ *
+ * Stored values (role / status / must_change_password) stay language-neutral
+ * inside the spreadsheet; the UI renders English labels for them.
+ */
 export type Role = 'admin' | 'operator';
 export type Status = 'aktif' | 'nonaktif';
-export type YaTidak = 'ya' | 'tidak';
+export type YesNo = 'ya' | 'tidak';
 
-/** Satu baris di tab `akun`. */
-export type Akun = {
+/** One row in the `customers` tab. */
+export type Customer = {
   id: string;
-  nama_pelanggan: string;
-  username: string;
-  email_solarwinds: string;
-  email_duo: string;
-  pic: string;
-  /** Tanggal input, format teks YYYY-MM-DD. */
-  tanggal_input: string;
+  /** Customer company name. */
+  company_name: string;
+  /** Customer ID. */
+  cid: string;
+  /** Username of the account being tracked. */
+  account_username: string;
+  pic_name: string;
+  pic_phone: string;
+  pic_email: string;
+  /** Username of the app user who owns this account. */
+  am_username: string;
+  /** Recorded automatically; never shown in tables. */
+  created_at: string;
 };
 
-/** Satu baris di tab `users` — akun untuk login ke aplikasi. */
+/** Fields a person may fill in through the form. */
+export type CustomerInput = Omit<Customer, 'id' | 'created_at'>;
+
+/** One row in the `users` tab — an account that can sign in. */
 export type User = {
   id: string;
   username: string;
@@ -22,22 +37,44 @@ export type User = {
   password_hash: string;
   role: Role;
   status: Status;
-  must_change_password: YaTidak;
+  must_change_password: YesNo;
   created_at: string;
   last_login: string;
+  full_name: string;
+  phone: string;
+  email: string;
 };
 
-/** Isi kolom yang boleh diubah dari aplikasi. */
-export type AkunInput = Omit<Akun, 'id'>;
+/** Everything except the id, which the bridge generates. */
+export type UserInput = Omit<User, 'id'>;
 
-export const LABEL_AKUN: Record<keyof AkunInput, string> = {
-  nama_pelanggan: 'Nama Pelanggan',
-  username: 'Username',
-  email_solarwinds: 'Email SolarWinds',
-  email_duo: 'Email Duo',
-  pic: 'PIC',
-  tanggal_input: 'Tanggal Input',
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: 'Admin',
+  operator: 'Operator',
 };
 
-/** Judul kolom untuk file Excel. */
-export const JUDUL_EXCEL = LABEL_AKUN;
+export const STATUS_LABEL: Record<Status, string> = {
+  aktif: 'Active',
+  nonaktif: 'Inactive',
+};
+
+/** Column headings used in the Excel export. */
+export const CUSTOMER_EXPORT_HEADERS: {
+  key: keyof CustomerInput;
+  label: string;
+  width: number;
+}[] = [
+  { key: 'company_name', label: 'Customer Company Name', width: 30 },
+  { key: 'cid', label: 'CID', width: 16 },
+  { key: 'account_username', label: 'Account Username', width: 24 },
+  { key: 'pic_name', label: 'PIC Name', width: 22 },
+  { key: 'pic_phone', label: 'PIC Phone', width: 20 },
+  { key: 'pic_email', label: 'PIC Email', width: 30 },
+  { key: 'am_username', label: 'Account Manager', width: 22 },
+];
+
+/** Best human label for a user: full name when present, otherwise username. */
+export function userLabel(u: Pick<User, 'full_name' | 'username'>): string {
+  const nama = (u.full_name ?? '').trim();
+  return nama || u.username || '—';
+}

@@ -1,97 +1,102 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import FormLogin from '@/components/FormLogin';
-import { sesiSekarang } from '@/lib/auth';
-import { jembatanSiap } from '@/lib/bridge';
-import { daftarPengguna } from '@/lib/data';
+import LoginForm from '@/components/FormLogin';
+import { currentSession } from '@/lib/auth';
+import { bridgeReady } from '@/lib/bridge';
+import { listUsers } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HalamanLogin({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pesan?: string; e?: string }>;
+  searchParams: Promise<{ msg?: string; e?: string }>;
 }) {
   const sp = await searchParams;
 
-  const sesi = await sesiSekarang();
-  if (sesi) redirect(sesi.mcp ? '/ganti-password?paksa=1' : '/');
+  const session = await currentSession();
+  if (session) redirect(session.mustChangePassword ? '/set-password' : '/');
 
-  const siap = jembatanSiap();
+  const ready = bridgeReady();
 
-  // Kalau belum ada satu pun akun login, arahkan ke halaman pembuatan admin.
-  // Catatan: redirect() harus dipanggil DI LUAR try/catch — dia bekerja dengan
-  // melempar error khusus, dan catch akan menelannya.
-  let galatJembatan: string | null = null;
-  let belumAdaAkun = false;
+  // If the spreadsheet cannot be read we still show the sign-in form, along
+  // with a clear explanation. Never a blank page.
+  let bridgeError: string | null = null;
+  let noAccounts = false;
 
-  if (siap) {
+  if (ready) {
     try {
-      belumAdaAkun = (await daftarPengguna()).length === 0;
+      noAccounts = (await listUsers()).length === 0;
     } catch (e) {
-      galatJembatan = e instanceof Error ? e.message : String(e);
+      bridgeError = e instanceof Error ? e.message : String(e);
     }
   }
 
-  if (belumAdaAkun) redirect('/setup');
-
   return (
-    <div className="pusat">
-      <div className="pusat-kartu">
+    <div className="centered">
+      <div className="centered-card">
         <div className="brand">
           <span className="brand-mark">MA</span>
           <div className="brand-text">
-            <strong>Manajemen Akun Pelanggan</strong>
-            <small>SolarWinds · Duo</small>
+            <strong>Account Manager</strong>
+            <small>Customer Accounts</small>
           </div>
         </div>
 
-        <h1>Masuk</h1>
-        <p className="sub">
-          Gunakan username dan password yang diberikan admin.
-        </p>
+        <h1>Sign in</h1>
+        <p className="sub">Use the username and password given to you by the admin.</p>
 
-        {sp.e === 'nonaktif' ? (
+        {sp.e === 'inactive' ? (
           <div className="alert alert-error">
             <span>!</span>
-            <span>Akun kamu sedang dinonaktifkan. Hubungi admin.</span>
+            <span>Your account is deactivated. Please contact your admin.</span>
           </div>
         ) : null}
 
-        {sp.pesan === 'admin-dibuat' ? (
-          <div className="alert alert-sukses">
+        {sp.msg === 'created' ? (
+          <div className="alert alert-success">
             <span>✓</span>
-            <span>Admin pertama berhasil dibuat. Silakan masuk.</span>
+            <span>The admin account was created. Please sign in.</span>
           </div>
         ) : null}
 
-        {!siap ? (
-          <div className="alert alert-peringatan">
+        {!ready ? (
+          <div className="alert alert-warning">
             <span>!</span>
             <div>
-              <strong>Konfigurasi belum lengkap</strong>
-              Isi <span className="mono">BRIDGE_URL</span>,{' '}
-              <span className="mono">BRIDGE_TOKEN</span>, dan{' '}
-              <span className="mono">AUTH_SECRET</span> di pengaturan Vercel, lalu deploy
-              ulang. Langkah lengkapnya ada di <span className="mono">docs/PANDUAN.md</span>.
+              <strong>Configuration is incomplete</strong>
+              Set <span className="mono">BRIDGE_URL</span>,{' '}
+              <span className="mono">BRIDGE_TOKEN</span> and{' '}
+              <span className="mono">AUTH_SECRET</span> in Vercel, then redeploy. The full
+              walkthrough is in <span className="mono">docs/PANDUAN.md</span>.
             </div>
           </div>
         ) : null}
 
-        {galatJembatan ? (
+        {bridgeError ? (
           <div className="alert alert-error">
             <span>!</span>
             <div>
-              <strong>Tidak bisa membaca spreadsheet</strong>
-              {galatJembatan}
+              <strong>Could not read the spreadsheet</strong>
+              {bridgeError}
             </div>
           </div>
         ) : null}
 
-        <FormLogin />
+        {noAccounts ? (
+          <div className="alert alert-info">
+            <span>i</span>
+            <div>
+              <strong>No sign-in account exists yet</strong>
+              The spreadsheet has no users. <Link href="/setup">Create the first admin</Link>{' '}
+              to get started.
+            </div>
+          </div>
+        ) : null}
 
-        <div className="pusat-kaki">
-          Lupa password? Hubungi admin untuk disetel ulang.
-        </div>
+        <LoginForm />
+
+        <div className="centered-foot">Forgot your password? Ask the admin to reset it.</div>
       </div>
     </div>
   );

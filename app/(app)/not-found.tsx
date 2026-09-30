@@ -1,25 +1,25 @@
 import Link from 'next/link';
 
-export default function TidakDitemukan() {
+export default function NotFound() {
   return (
     <>
       <header className="topbar">
         <div>
-          <h1>Data tidak ditemukan</h1>
-          <p>Baris yang kamu cari sudah tidak ada di spreadsheet.</p>
+          <h1>Record not found</h1>
+          <p>The row you were looking for is no longer in the spreadsheet.</p>
         </div>
       </header>
       <div className="content">
         <div className="card">
-          <div className="kosong">
-            <div className="ikon-besar">?</div>
-            <h3>Datanya tidak ada</h3>
+          <div className="empty">
+            <div className="empty-icon">?</div>
+            <h3>Nothing to show</h3>
             <p>
-              Kemungkinan baris ini sudah dihapus oleh orang lain, atau id-nya tidak
-              cocok. Coba cari ulang dari daftar akun.
+              It may have been deleted by someone else, or the link is wrong. Try
+              searching again from the customer list.
             </p>
-            <Link className="btn btn-utama" href="/akun">
-              Ke Daftar Akun
+            <Link className="btn btn-primary" href="/customers">
+              Go to Customer List
             </Link>
           </div>
         </div>

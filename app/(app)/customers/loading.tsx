@@ -3,7 +3,7 @@ export default function Loading() {
     <>
       <header className="topbar">
         <div>
-          <h1>One moment…</h1>
+          <h1>Customer List</h1>
           <p>Reading data from the spreadsheet.</p>
         </div>
       </header>
