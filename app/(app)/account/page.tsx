@@ -1,13 +1,17 @@
 import Link from 'next/link';
+import DataError from '@/components/DataError';
 import { PasswordForm, ProfileForm } from '@/components/AccountForms';
 import { requireActiveUser } from '@/lib/auth';
+import { safeLoad } from '@/lib/safe';
 import { formatStamp } from '@/lib/format';
 import { ROLE_LABEL } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MyAccountPage() {
-  const { user } = await requireActiveUser();
+  const loaded = await safeLoad(() => requireActiveUser());
+  if (!loaded.ok) return <DataError message={loaded.error} />;
+  const { user } = loaded.data;
 
   return (
     <>

@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import Notice from '@/components/Notice';
 import DeleteButton from '@/components/DeleteButton';
+import DataError from '@/components/DataError';
 import { deleteCustomerAction } from '@/actions/customers';
 import { loadBoth } from '@/lib/data';
+import { safeLoad } from '@/lib/safe';
 import { initials } from '@/lib/format';
 import { userLabel, type Customer, type User } from '@/lib/types';
 
@@ -73,7 +75,9 @@ export default async function CustomerList({
   const q = (sp.q ?? '').trim();
   const am = (sp.am ?? '').trim();
 
-  const { customers, users } = await loadBoth();
+  const loaded = await safeLoad(() => loadBoth());
+  if (!loaded.ok) return <DataError message={loaded.error} />;
+  const { customers, users } = loaded.data;
   const byUsername = new Map(users.map((u) => [u.username, u]));
 
   const results = customers

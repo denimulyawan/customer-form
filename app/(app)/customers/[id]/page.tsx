@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import CustomerForm, { type ManagerOption } from '@/components/CustomerForm';
+import DataError from '@/components/DataError';
 import { updateCustomerAction } from '@/actions/customers';
 import { loadBoth } from '@/lib/data';
+import { safeLoad } from '@/lib/safe';
 import { formatStamp } from '@/lib/format';
 import { userLabel } from '@/lib/types';
 
@@ -14,7 +16,11 @@ export default async function EditCustomerPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { customers, users } = await loadBoth();
+
+  const loaded = await safeLoad(() => loadBoth());
+  if (!loaded.ok) return <DataError message={loaded.error} />;
+  const { customers, users } = loaded.data;
+
   const customer = customers.find((c) => c.id === id);
 
   if (!customer) notFound();

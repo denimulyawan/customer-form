@@ -1,13 +1,17 @@
 import Link from 'next/link';
 import CustomerForm, { type ManagerOption } from '@/components/CustomerForm';
+import DataError from '@/components/DataError';
 import { createCustomerAction } from '@/actions/customers';
 import { listUsers } from '@/lib/data';
+import { safeLoad } from '@/lib/safe';
 import { userLabel } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewCustomerPage() {
-  const users = await listUsers();
+  const loaded = await safeLoad(() => listUsers());
+  if (!loaded.ok) return <DataError message={loaded.error} />;
+  const users = loaded.data;
 
   const managers: ManagerOption[] = users
     .filter((u) => u.status === 'aktif')

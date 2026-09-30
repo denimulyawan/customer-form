@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import Notice from '@/components/Notice';
+import DataError from '@/components/DataError';
 import { CreateUserForm, ResetPasswordForm } from '@/components/UserForms';
 import { toggleStatusAction } from '@/actions/users';
 import { requireAdmin } from '@/lib/auth';
 import { listUsers } from '@/lib/data';
+import { safeLoad } from '@/lib/safe';
 import { formatStamp } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -14,8 +16,14 @@ export default async function UserManagementPage({
   searchParams: Promise<{ msg?: string; e?: string }>;
 }) {
   const sp = await searchParams;
-  const { user: me } = await requireAdmin();
-  const users = await listUsers();
+
+  const loaded = await safeLoad(async () => {
+    const { user } = await requireAdmin();
+    const users = await listUsers();
+    return { me: user, users };
+  });
+  if (!loaded.ok) return <DataError message={loaded.error} />;
+  const { me, users } = loaded.data;
 
   const sorted = [...users].sort((a, b) =>
     String(a.username).localeCompare(String(b.username))

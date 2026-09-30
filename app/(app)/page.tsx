@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import Notice from '@/components/Notice';
+import DataError from '@/components/DataError';
 import { ColumnChart, DonutChart, type Slice } from '@/components/Charts';
 import { loadBoth } from '@/lib/data';
+import { safeLoad } from '@/lib/safe';
 import { formatDate, initials, lastMonths, monthKey, nowStamp } from '@/lib/format';
 import { userLabel } from '@/lib/types';
 
@@ -13,7 +15,10 @@ export default async function Dashboard({
   searchParams: Promise<{ msg?: string; e?: string }>;
 }) {
   const sp = await searchParams;
-  const { customers, users } = await loadBoth();
+
+  const loaded = await safeLoad(() => loadBoth());
+  if (!loaded.ok) return <DataError message={loaded.error} />;
+  const { customers, users } = loaded.data;
 
   const totalAccounts = customers.length;
 
