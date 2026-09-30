@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Notice from '@/components/Notice';
 import DataError from '@/components/DataError';
 import { CreateUserForm, ResetPasswordForm } from '@/components/UserForms';
 import { toggleStatusAction } from '@/actions/users';
-import { requireAdmin } from '@/lib/auth';
+import { requireSession } from '@/lib/auth';
 import { listUsers } from '@/lib/data';
 import { safeLoad } from '@/lib/safe';
 import { formatStamp } from '@/lib/format';
@@ -20,10 +21,16 @@ export default async function UserManagementPage({
 }) {
   const sp = await searchParams;
 
+  // ONE read of the spreadsheet, not two. The admin's own record is already
+  // inside this list, so fetching it separately — as requireAdmin() does —
+  // doubled the wait on this page for no benefit.
   const loaded = await safeLoad(async () => {
-    const { user } = await requireAdmin();
+    const session = await requireSession();
     const users = await listUsers();
-    return { me: user, users };
+    const me = users.find((u) => u.id === session.userId);
+    if (!me || me.status !== 'aktif') redirect('/login?e=inactive');
+    if (me.role !== 'admin') redirect('/?e=notadmin');
+    return { me, users };
   });
   if (!loaded.ok) return <DataError message={loaded.error} />;
   const { me, users } = loaded.data;
